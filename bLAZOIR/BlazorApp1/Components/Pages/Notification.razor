@@ -1,0 +1,45 @@
+@page "/notifications"
+@using Microsoft.AspNetCore.SignalR.Client  @* This is the missing directive *@
+@inject NavigationManager Navigation
+
+<h3>Real-time Notifications</h3>
+<p>@Message</p>
+
+<button @onclick="ConnectToHub">Connect</button>
+
+@code {
+    private string Message = "No notifications yet";
+    private HubConnection? _hubConnection;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/notificationHub"))
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<string>("ReceiveNotification", (message) =>
+            {
+                Message = message;
+                StateHasChanged();
+            });
+
+            await _hubConnection.StartAsync();
+        }
+        catch (Exception ex)
+        {
+            Message = $"Connection failed: {ex.Message}";
+        }
+    }
+
+    private async Task ConnectToHub()
+    {
+        if (_hubConnection is not null && _hubConnection.State == HubConnectionState.Disconnected)
+        {
+            await _hubConnection.StartAsync();
+            Message = "Reconnected!";
+        }
+    }
+}

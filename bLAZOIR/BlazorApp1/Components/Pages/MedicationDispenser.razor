@@ -1,0 +1,1279 @@
+@page "/medication-dispenser"
+@using System
+@using System.Collections.Generic
+@using System.Timers
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="container">
+    <div class="header mb-4">
+        <h1 class="text-center p-3 bg-primary text-white rounded">Thuis Medicijn Dispenser</h1>
+    </div>
+
+    @if (showMenuPage)
+    {
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h3 class="mb-0">Menu</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="list-group">
+                            <button class="list-group-item list-group-item-action" @onclick="ShowStatus">1. Toon status van alle compartimenten</button>
+                            <button class="list-group-item list-group-item-action" @onclick="ShowLogs">2. Medicijninname logboek bekijken</button>
+                            <button class="list-group-item list-group-item-action" @onclick="ConfigureCompartment">3. Configureer een compartiment (beheerder)</button>
+                            <button class="list-group-item list-group-item-action" @onclick="RefillCompartment">4. Vul een compartiment bij (beheerder)</button>
+                            <button class="list-group-item list-group-item-action bg-danger text-white" @onclick="EmergencyUnlock">5. Noodontgrendeling (alleen voor noodgevallen)</button>
+                            <button class="list-group-item list-group-item-action" @onclick="TestMedicationReminder">6. Test medicijnherinnering (voor demonstratie)</button>
+                            <button class="list-group-item list-group-item-action" @onclick="StartCountdownForNextMedication">7. Toon countdown timer voor volgende medicijn</button>
+                            <button class="list-group-item list-group-item-action" @onclick="StartCountdownForSpecificMedication">8. Toon countdown timer voor specifiek medicijn</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showStatusPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Medicijn Dispenser Status</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                @if (compartments.Count == 0 || compartments.All(c => c == null))
+                {
+                    <div class="alert alert-warning">
+                        <h4>Geen medicijnen geconfigureerd in deze dispenser.</h4>
+                        <p>Gebruik optie 3 om medicijncompartimenten te configureren.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="row">
+                        @for (int i = 0; i < compartments.Count; i++)
+                        {
+                            var compartment = compartments[i];
+                            var index = i;  // Capture the current index
+                            
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h4>Compartiment @(index + 1)</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (compartment != null)
+                                        {
+                                            <p><strong>Medicijn:</strong> @compartment.MedicijnNaam (@compartment.Dosis)</p>
+                                            <p><strong>Voorraad:</strong> @compartment.Voorraad tabletten</p>
+                                            
+                                            <p>
+                                                <strong>Status:</strong>
+                                                @switch (compartment.Status)
+                                                {
+                                                    case CompartimentStatus.Vergrendeld:
+                                                        <span class="badge bg-danger">VERGRENDELD</span>
+                                                        break;
+                                                    case CompartimentStatus.Ontgrendeld:
+                                                        <span class="badge bg-warning">ONTGRENDELD</span>
+                                                        break;
+                                                    case CompartimentStatus.Open:
+                                                        <span class="badge bg-success">OPEN</span>
+                                                        break;
+                                                    default:
+                                                        <span class="badge bg-secondary">@compartment.Status.ToString()</span>
+                                                        break;
+                                                }
+                                            </p>
+                                            
+                                            <p><strong>Volgende dosering:</strong> @compartment.VolgendeDoseringstijd()</p>
+                                            
+                                            <div class="d-flex justify-content-end">
+                                                <button class="btn btn-outline-primary btn-sm me-2" @onclick="() => StartCountdownTimer(index)">
+                                                    Toon Timer
+                                                </button>
+                                                <button class="btn btn-outline-success btn-sm" @onclick="() => TriggerMedicijnHerinnering(index)">
+                                                    Test Herinnering
+                                                </button>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Niet geconfigureerd</p>
+                                            <button class="btn btn-primary btn-sm" @onclick="() => ConfigureSpecificCompartment(index)">
+                                                Configureren
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (showLogsPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Medicijn Inname Log</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                @if (innameLogs.Count == 0)
+                {
+                    <div class="alert alert-info">Geen medicijnen ingenomen.</div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Tijd</th>
+                                    <th>Compartiment</th>
+                                    <th>Medicijn</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var log in innameLogs)
+                                {
+                                    string medicijnNaam = compartments[log.compartimentNr] != null 
+                                        ? compartments[log.compartimentNr].MedicijnNaam 
+                                        : "Onbekend";
+                                        
+                                    string status = log.genomen ? "Genomen" : "Gemist";
+                                    
+                                    <tr>
+                                        <td>@log.tijdstip.ToString("dd-MM-yyyy HH:mm")</td>
+                                        <td>@(log.compartimentNr + 1)</td>
+                                        <td>@medicijnNaam</td>
+                                        <td>
+                                            @if (log.genomen)
+                                            {
+                                                <span class="badge bg-success">Genomen</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger">Gemist</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (showConfigurePage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Compartiment Configuratie</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="compartment-select" class="form-label">Selecteer compartiment:</label>
+                    <select id="compartment-select" class="form-select" @bind="selectedCompartmentIndex">
+                        @for (int i = 0; i < compartments.Count; i++)
+                        {
+                            <option value="@i">Compartiment @(i + 1)</option>
+                        }
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="medication-name" class="form-label">Medicijn naam:</label>
+                    <input id="medication-name" type="text" class="form-control" @bind="configMedicationName" />
+                </div>
+                
+                <div class="mb-3">
+                    <label for="medication-dosage" class="form-label">Dosering (bijv. 500mg):</label>
+                    <input id="medication-dosage" type="text" class="form-control" @bind="configMedicationDosage" />
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Doseringstijden:</label>
+                    
+                    @foreach (var time in configDosingTimes)
+                    {
+                        var index = configDosingTimes.IndexOf(time);
+                        <div class="input-group mb-2">
+                            <input type="time" class="form-control" value="@time.ToString(@"hh\:mm")" 
+                                @onchange="@(e => UpdateDosingTime(index, e.Value?.ToString()))" />
+                            <button class="btn btn-outline-danger" @onclick="() => RemoveDosingTime(index)">
+                                <i class="bi bi-trash"></i> Verwijder
+                            </button>
+                        </div>
+                    }
+                    
+                    <button class="btn btn-outline-primary" @onclick="AddDosingTime">
+                        <i class="bi bi-plus"></i> Tijdstip toevoegen
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="medication-stock" class="form-label">Beginvoorraad:</label>
+                    <input id="medication-stock" type="number" class="form-control" @bind="configMedicationStock" min="0" />
+                </div>
+                
+                <div class="d-flex justify-content-end">
+                    <button class="btn btn-primary" @onclick="SaveCompartmentConfig">Opslaan</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showRefillPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Compartiment Bijvullen</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="refill-compartment-select" class="form-label">Selecteer compartiment:</label>
+                    <select id="refill-compartment-select" class="form-select" @bind="selectedRefillCompartmentIndex">
+                        @for (int i = 0; i < compartments.Count; i++)
+                        {
+                            if (compartments[i] != null)
+                            {
+                                <option value="@i">Compartiment @(i + 1) - @compartments[i].MedicijnNaam (@compartments[i].Voorraad stuks)</option>
+                            }
+                        }
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="refill-amount" class="form-label">Aantal om toe te voegen:</label>
+                    <input id="refill-amount" type="number" class="form-control" @bind="refillAmount" min="1" />
+                </div>
+                
+                <div class="d-flex justify-content-end">
+                    <button class="btn btn-primary" @onclick="SaveRefill">Bijvullen</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showCountdownPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Medicijn Countdown Timer</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body text-center">
+                @if (activeCountdownMedication != null)
+                {
+                    <div class="countdown-display p-4 mb-4 border rounded bg-light">
+                        <h2 class="mb-3">@activeCountdownMedication.MedicijnNaam</h2>
+                        <p class="mb-2">Compartiment @(activeCountdownCompartmentIndex + 1) - @activeCountdownMedication.Dosis</p>
+                        
+                        <div class="countdown-timer my-4">
+                            <h1 class="display-3 text-primary mb-3">@countdownDisplay</h1>
+                            <p>Tijd tot volgende inname</p>
+                        </div>
+                        
+                        <p class="mb-0">Volgende inname: @activeCountdownTime.ToString("dd-MM-yyyy HH:mm")</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning">
+                        <p>Geen medicijn geselecteerd voor countdown.</p>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (showMedicationReminderPage)
+    {
+        <div class="card mb-4 reminder-alert">
+            <div class="card-header bg-danger text-white">
+                <h3 class="mb-0">MEDICIJN HERINNERING</h3>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="mb-3">Het is tijd om uw medicijn te nemen:</h2>
+                
+                <div class="medication-info my-4">
+                    <h3 class="text-primary">@activeReminderMedication.MedicijnNaam</h3>
+                    <p class="lead">@activeReminderMedication.Dosis</p>
+                    <p class="mb-4">Compartiment @(activeReminderCompartmentIndex + 1)</p>
+                </div>
+                
+                <div class="d-grid gap-2 col-md-6 mx-auto">
+                    <button class="btn btn-success btn-lg mb-2" @onclick="UnlockCompartment">
+                        Ontgrendel Compartiment
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="DismissReminder">
+                        Later Herinneren
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showCompartmentUnlockedPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h3 class="mb-0">COMPARTIMENT ONTGRENDELD</h3>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="mb-3">Compartiment @(activeReminderCompartmentIndex + 1) is ontgrendeld</h2>
+                
+                <div class="medication-info my-4">
+                    <h3 class="text-primary">@activeReminderMedication.MedicijnNaam</h3>
+                    <p class="lead">@activeReminderMedication.Dosis</p>
+                </div>
+                
+                <div class="d-grid gap-2 col-md-6 mx-auto">
+                    <button class="btn btn-success btn-lg mb-2" @onclick="OpenCompartment">
+                        Open Compartiment
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showCompartmentOpenPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">COMPARTIMENT OPEN</h3>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="mb-3">Neem uw medicijn</h2>
+                
+                <div class="medication-info my-4">
+                    <h3 class="text-primary">@activeReminderMedication.MedicijnNaam</h3>
+                    <p class="lead">@activeReminderMedication.Dosis</p>
+                    <p class="mb-4">Compartiment @(activeReminderCompartmentIndex + 1)</p>
+                </div>
+                
+                <div class="d-grid gap-2 col-md-6 mx-auto">
+                    <button class="btn btn-success btn-lg mb-2" @onclick="TakeMedication">
+                        Ik heb mijn medicijn genomen
+                    </button>
+                    <button class="btn btn-outline-secondary" @onclick="CloseCompartmentWithoutTaking">
+                        Sluiten zonder medicijn te nemen
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showAlert)
+    {
+        <div class="position-fixed top-0 start-0 end-0 p-3" style="z-index: 1050;">
+            <div class="toast show mx-auto" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header @alertHeaderClass">
+                    <strong class="me-auto text-white">@alertTitle</strong>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAlert"></button>
+                </div>
+                <div class="toast-body">
+                    @((MarkupString)alertMessage)
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // Enumeratie voor de status van het dispenser-compartiment
+    enum CompartimentStatus
+    {
+        Vergrendeld,
+        Ontgrendeld,
+        Open,
+        Gesloten
+    }
+    
+    // Enumeratie voor licht-indicaties
+    enum LichtStatus
+    {
+        Uit,
+        Rood,
+        Groen,
+        Geel,
+        Knipperend
+    }
+
+    // Klasse voor een medicijncompartiment
+    class MedicijnCompartiment
+    {
+        public string MedicijnNaam { get; private set; }
+        public string Dosis { get; private set; }
+        public int CompartimentNummer { get; private set; }
+        public CompartimentStatus Status { get; private set; }
+        public LichtStatus Licht { get; private set; }
+        public int Voorraad { get; private set; }
+        public List<TimeSpan> DoseringstijdenPerDag { get; private set; }
+        public DateTime? LaatsteOpeningTijd { get; private set; }
+
+        public MedicijnCompartiment(int nummer, string medicijnNaam, string dosis)
+        {
+            CompartimentNummer = nummer;
+            MedicijnNaam = medicijnNaam;
+            Dosis = dosis;
+            Status = CompartimentStatus.Vergrendeld;
+            Licht = LichtStatus.Uit;
+            Voorraad = 0;
+            DoseringstijdenPerDag = new List<TimeSpan>();
+            LaatsteOpeningTijd = null;
+        }
+
+        public void VoegDoseringstijdToe(int uur, int minuut)
+        {
+            DoseringstijdenPerDag.Add(new TimeSpan(uur, minuut, 0));
+        }
+
+        public bool IsHetTijdVoorDosering(DateTime nu)
+        {
+            TimeSpan huidigeTijd = nu.TimeOfDay;
+            
+            foreach (TimeSpan doseringstijd in DoseringstijdenPerDag)
+            {
+                // Controleer of het binnen 5 minuten van een dosering is
+                double verschilMinuten = Math.Abs((huidigeTijd - doseringstijd).TotalMinutes);
+                
+                if (verschilMinuten <= 5)
+                {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        public void VulVoorraadBij(int aantal)
+        {
+            Voorraad += aantal;
+        }
+
+        public bool NeemMedicijn()
+        {
+            if (Voorraad > 0 && Status == CompartimentStatus.Open)
+            {
+                Voorraad--;
+                LaatsteOpeningTijd = DateTime.Now;
+                return true;
+            }
+            return false;
+        }
+
+        public void ZetStatus(CompartimentStatus nieuweStatus)
+        {
+            Status = nieuweStatus;
+            
+            // Update licht gebaseerd op nieuwe status
+            switch (Status)
+            {
+                case CompartimentStatus.Vergrendeld:
+                    Licht = LichtStatus.Rood;
+                    break;
+                case CompartimentStatus.Ontgrendeld:
+                    Licht = LichtStatus.Knipperend;
+                    break;
+                case CompartimentStatus.Open:
+                    Licht = LichtStatus.Groen;
+                    break;
+                case CompartimentStatus.Gesloten:
+                    Licht = LichtStatus.Uit;
+                    break;
+            }
+        }
+
+        public string VolgendeDoseringstijd()
+        {
+            if (DoseringstijdenPerDag.Count == 0)
+                return "Geen doseringstijden ingesteld";
+
+            DateTime nu = DateTime.Now;
+            TimeSpan huidigeTijd = nu.TimeOfDay;
+            
+            // Zoek het eerstvolgende doseringsmoment
+            TimeSpan? volgende = null;
+            double kortsteWachttijd = double.MaxValue;
+            
+            foreach (TimeSpan doseringstijd in DoseringstijdenPerDag)
+            {
+                // Bereken wachttijd (vandaag of morgen)
+                double wachttijdMinuten;
+                
+                if (doseringstijd > huidigeTijd)
+                {
+                    // Later vandaag
+                    wachttijdMinuten = (doseringstijd - huidigeTijd).TotalMinutes;
+                }
+                else
+                {
+                    // Morgen
+                    wachttijdMinuten = (TimeSpan.FromHours(24) - huidigeTijd + doseringstijd).TotalMinutes;
+                }
+                
+                if (wachttijdMinuten < kortsteWachttijd)
+                {
+                    kortsteWachttijd = wachttijdMinuten;
+                    volgende = doseringstijd;
+                }
+            }
+            
+            if (volgende.HasValue)
+            {
+                // Bereken datum en tijd van de volgende dosis
+                DateTime volgendeDosering;
+                
+                if (volgende.Value > huidigeTijd)
+                {
+                    // Later vandaag
+                    volgendeDosering = nu.Date.Add(volgende.Value);
+                }
+                else
+                {
+                    // Morgen
+                    volgendeDosering = nu.Date.AddDays(1).Add(volgende.Value);
+                }
+                
+                return volgendeDosering.ToString("dd-MM HH:mm");
+            }
+            
+            return "Onbekend";
+        }
+        
+        // Bereken de DateTime van de volgende inname
+        public DateTime BerekenVolgendeInnameTijd()
+        {
+            if (DoseringstijdenPerDag.Count == 0)
+                return DateTime.MaxValue;
+
+            DateTime nu = DateTime.Now;
+            TimeSpan huidigeTijd = nu.TimeOfDay;
+            
+            // Zoek het eerstvolgende doseringsmoment
+            TimeSpan? volgende = null;
+            double kortsteWachttijd = double.MaxValue;
+            
+            foreach (TimeSpan doseringstijd in DoseringstijdenPerDag)
+            {
+                // Bereken wachttijd (vandaag of morgen)
+                double wachttijdMinuten;
+                
+                if (doseringstijd > huidigeTijd)
+                {
+                    // Later vandaag
+                    wachttijdMinuten = (doseringstijd - huidigeTijd).TotalMinutes;
+                }
+                else
+                {
+                    // Morgen
+                    wachttijdMinuten = (TimeSpan.FromHours(24) - huidigeTijd + doseringstijd).TotalMinutes;
+                }
+                
+                if (wachttijdMinuten < kortsteWachttijd)
+                {
+                    kortsteWachttijd = wachttijdMinuten;
+                    volgende = doseringstijd;
+                }
+            }
+            
+            if (volgende.HasValue)
+            {
+                // Bereken datum en tijd van de volgende dosis
+                if (volgende.Value > huidigeTijd)
+                {
+                    // Later vandaag
+                    return nu.Date.Add(volgende.Value);
+                }
+                else
+                {
+                    // Morgen
+                    return nu.Date.AddDays(1).Add(volgende.Value);
+                }
+            }
+            
+            return DateTime.MaxValue;
+        }
+    }
+
+    // View state variables
+    private bool showMenuPage = true;
+    private bool showStatusPage = false;
+    private bool showLogsPage = false;
+    private bool showConfigurePage = false;
+    private bool showRefillPage = false;
+    private bool showCountdownPage = false;
+    private bool showMedicationReminderPage = false;
+    private bool showCompartmentUnlockedPage = false;
+    private bool showCompartmentOpenPage = false;
+    private bool showAlert = false;
+    
+    // Alert properties
+    private string alertTitle = "";
+    private string alertMessage = "";
+    private string alertHeaderClass = "bg-primary";
+    
+    // Dispenser data
+    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
+    private List<(int compartimentNr, DateTime tijdstip, bool genomen)> innameLogs = new List<(int, DateTime, bool)>();
+    private Timer? checkMedicationsTimer;
+    private Timer? countdownTimer;
+    
+    // Configuration page variables
+    private int selectedCompartmentIndex = 0;
+    private string configMedicationName = "";
+    private string configMedicationDosage = "";
+    private List<TimeSpan> configDosingTimes = new List<TimeSpan>();
+    private int configMedicationStock = 0;
+    
+    // Refill page variables
+    private int selectedRefillCompartmentIndex = 0;
+    private int refillAmount = 1;
+    
+    // Countdown page variables
+    private int activeCountdownCompartmentIndex = -1;
+    private MedicijnCompartiment? activeCountdownMedication = null;
+    private DateTime activeCountdownTime = DateTime.MaxValue;
+    private string countdownDisplay = "--:--:--";
+    
+    // Reminder page variables
+    private int activeReminderCompartmentIndex = -1;
+    private MedicijnCompartiment? activeReminderMedication = null;
+
+    protected override void OnInitialized()
+    {
+        // Initialize the dispenser with 4 empty compartments
+        for (int i = 0; i < 4; i++)
+        {
+            compartments.Add(null);
+        }
+        
+        // Start the timer to check medication schedules every minute
+        checkMedicationsTimer = new Timer(60000); // 60 seconds
+        checkMedicationsTimer.Elapsed += CheckMedicationsTimerElapsed;
+        checkMedicationsTimer.AutoReset = true;
+        checkMedicationsTimer.Start();
+        
+        // Set up example medications if needed
+        SetupVoorbeeldDispenser();
+    }
+
+    protected async override Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Optional: perform any JavaScript initialization
+            await JSRuntime.InvokeVoidAsync("console.log", "Medication Dispenser initialized");
+        }
+    }
+
+    private void SetupVoorbeeldDispenser()
+    {
+        // Compartiment 1: Paracetamol (3x daags)
+        ConfigureerCompartiment(0, "Paracetamol", "500mg");
+        
+        // Morning, afternoon, evening dosage times
+        compartments[0]?.VoegDoseringstijdToe(8, 0);
+        compartments[0]?.VoegDoseringstijdToe(13, 0);
+        compartments[0]?.VoegDoseringstijdToe(20, 0);
+        
+        compartments[0]?.VulVoorraadBij(30);
+        
+        // Compartiment 2: Vitamine D (1x daags)
+        ConfigureerCompartiment(1, "Vitamine D", "25mcg");
+        compartments[1]?.VoegDoseringstijdToe(8, 0);
+        compartments[1]?.VulVoorraadBij(60);
+        
+        // Compartiment 3: Bloeddrukmedicatie (2x daags)
+        ConfigureerCompartiment(2, "Lisinopril", "10mg");
+        compartments[2]?.VoegDoseringstijdToe(8, 0);
+        compartments[2]?.VoegDoseringstijdToe(20, 0);
+        compartments[2]?.VulVoorraadBij(28);
+        
+        // Compartiment 4: Demo medicijn (voor testen)
+        ConfigureerCompartiment(3, "DemoPil", "50mg");
+        
+        // Set a time close to now for testing
+        DateTime demoTijd = DateTime.Now.AddMinutes(2);
+        compartments[3]?.VoegDoseringstijdToe(demoTijd.Hour, demoTijd.Minute);
+        
+        // Add another time for testing
+        DateTime demoCountdownTijd = DateTime.Now.AddMinutes(5);
+        compartments[3]?.VoegDoseringstijdToe(demoCountdownTijd.Hour, demoCountdownTijd.Minute);
+        
+        compartments[3]?.VulVoorraadBij(10);
+    }
+
+    private void ConfigureerCompartiment(int compartimentNr, string medicijnNaam, string dosis)
+    {
+        if (compartimentNr >= 0 && compartimentNr < compartments.Count)
+        {
+            compartments[compartimentNr] = new MedicijnCompartiment(compartimentNr + 1, medicijnNaam, dosis);
+        }
+    }
+
+    private void CheckMedicationsTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        // Check if any medication needs to be taken
+        DateTime now = DateTime.Now;
+        bool medicationNeeded = false;
+        
+        for (int i = 0; i < compartments.Count; i++)
+        {
+            if (compartments[i] != null && 
+                compartments[i]!.IsHetTijdVoorDosering(now) && 
+                compartments[i]!.Status == CompartimentStatus.Vergrendeld)
+            {
+                InvokeAsync(() => {
+                    ShowMedicationReminder(i);
+                    PlayAlertSound();
+                });
+                
+                medicationNeeded = true;
+                break;
+            }
+        }
+        
+        if (!medicationNeeded)
+        {
+            // Update the countdown timer if active
+            if (activeCountdownMedication != null)
+            {
+                InvokeAsync(() => {
+                    UpdateCountdownDisplay();
+                    StateHasChanged();
+                });
+            }
+        }
+    }
+    
+    private async Task PlayAlertSound()
+    {
+        try
+        {
+            // Play notification sound using browser API
+            await JSRuntime.InvokeVoidAsync("eval", @"
+                function beep() {
+                    var snd = new Audio('data:audio/wav;base64,//uQRAAAAWMSLwUIYAAsYkXgoQwAEaYLWfkWgAI0wWs/ItAAAGDgYtAgAyN+QWaAAihwMWm4G8QQRDiMcCBcH3Cc+CDv/7xA4Tvh9Rz/y8QADBwMWgQAZG/ILNAARQ4GLTcDeIIIhxGOBAuD7hOfBB3/94gcJ3w+o5/5eIAIAAAVwWgQAVQ2ORaIQwEMAJiDg95G4nQL7mQVWI6GwRcfsZAcsKkJvxgxEjzFUgfHoSQ9Qq7KNwqHwuB13MA4a1q/DmBrHgPcmjiGoh//EwC5nGPEmS4RcfkVKOhJf+WOgoxJclFz3kgn//dBA+ya1GhurNn8zb//9NNutNuhz31f////9vt///z+IdAEAAAK4LQIAKobHItEIYCGAExBwe8jcToF9zIKrEdDYIuP2MgOWFSE34wYiR5iqQPj0JIeoVdlG4VD4XA67mAcNa1fhzA1jwHuTRxDUQ//iYBczjHiTJcIuPyKlHQkv/LHQUYkuSi57yQT//uggfZNajQ3Vmz+Zt//+mm3Wm3Q576v////+32///5/EOgAAADVghQAAAAA//uQZAUAB1WI0PZugAAAAAoQwAAAEk3nRd2qAAAAACiDgAAAAAAABCqEEQRLCgwpBGMlJkIz8jKhGvj4k6jzRnqasNKIeoh5gI7BJaC1A1AoNBjJgbyApVS4IDlZgDU5WUAxEKDNmmALHzZp0Fkz1FMTmGFl1FMEyodIavcCAUHDWrKAIA4aa2oCgILEBupZgHvAhEBcZ6joQBxS76AgccrFlczBvKLC0QI2cBoCFvfTDAo7eoOQInqDPBtvrDEZBNYN5xwNwxQRfw8ZQ5wQVLvO8OYU+mHvFLlDh05Mdg7BT6YrRPpCBznMB2r//xKJjyyOh+cImr2/4doscwD6neZjuZR4AgAABYAAAABy1xcdQtxYBYYZdifkUDgzzXaXn98Z0oi9ILU5mBjFANmRwlVJ3/6jYDAmxaiDG3/6xjQQCCKkRb/6kg/wW+kSJ5//rLobkLSiKmqP/0ikJuDaSaSf/6JiLYLEYnW/+kXg1WRVJL/9EmQ1YZIsv/6Qzwy5qk7/+tEU0nkls3/zIUMPKNX/6yZLf+kFgAfgGyLFAUwY//uQZAUABcd5UiNPVXAAAApAAAAAE0VZQKw9ISAAACgAAAAAVQIygIElVrFkBS+Jhi+EAuu+lKAkYUEIsmEAEoMeDmCETMvfSHTGkF5RWH7kz/ESHWPAq/kcCRhqBtMdokPdM7vil7RG98A2sc7zO6ZvTdM7pmOUAZTnJW+NXxqmd41dqJ6mLTXxrPpnV8avaIf5SvL7pndPvPpndJR9Kuu8fePvuiuhorgWjp7Mf/PRjxcFCPDkW31srioCExivv9lcwKEaHsf/7ow2Fl1T/9RkXgEhYElAoCLFtMArxwivDJJ+bR1HTKJdlEoTELCIqgEwVGSQ+hIm0NbK8WXcTEI0UPoa2NbG4y2K00JEWbZavJXkYaqo9CRHS55FcZTjKEk3NKoCYUnSQ0rWxrZbFKbKIhOKPZe1cJKzZSaQrIyULHDZmV5K4xySsDRKWOruanGtjLJXFEmwaIbDLX0hIPBUQPVFVkQkDoUNfSoDgQGKPekoxeGzA4DUvnn4bxzcZrtJyipKfPNy5w+9lnXwgqsiyHNeSVpemw4bWb9psYeq//uQZBoABQt4yMVxYAIAAAkQoAAAHvYpL5m6AAgAACXDAAAAD59jblTirQe9upFsmZbpMudy7Lz1X1DYsxOOSWpfPqNX2WqktK0DMvuGwlbNj44TleLPQ+Gsfb+GOWOKJoIrWb3cIMeeON6lz2umTqMXV8Mj30yWPpjoSa9ujK8SyeJP5y5mOW1D6hvLepeveEAEDo0mgCRClOEgANv3B9a6fikgUSu/DmAMATrGx7nng5p5iimPNZsfQLYB2sDLIkzRKZOHGAaUyDcpFBSLG9MCQALgAIgQs2YunOszLSAyQYPVC2YdGGeHD2dTdJk1pAHGAWDjnkcLKFymS3RQZTInzySoBwMG0QueC3gMsCEYxUqlrcxK6k1LQQcsmyYeQPdC2YfuGPASCBkcVMQQqpVJshui1tkXQJQV0OXGAZMXSOEEBRirXbVRQW7ugq7IM7rPWSZyDlM3IuNEkxzCOJ0ny2ThNkyRai1b6ev//3dzNGzNb//4uAvHT5sURcZCFcuKLhOFs8mLAAEAt4UWAAIABAAAAAB4qbHo0tIjVkUU//uQZAwABfSFz3ZqQAAAAAngwAAAE1HjMp2qAAAAACZDgAAAD5UkTE1UgZEUExqYynN1qZvqIOREEFmBcJQkwdxiFtw0qEOkGYfRDifBui9MQg4QAHAqWtAWHoCxu1Yf4VfWLPIM2mHDFsbQEVGwyqQoQcwnfHeIkNt9YnkiaS1oizycqJrx4KOQjahZxWbcZgztj2c49nKmkId44S71j0c8eV9yDK6uPRzx5X18eDvjvQ6yKo9ZSS6l//8elePK/Lf//IInrOF/FvDoADYAGBMGb7FtErm5MXMlmPAJQVgWta7Zx2go+8xJ0UiCb8LHHdftWyLJE0QIAIsI+UbXu67dZMjmgDGCGl1H+vpF4NSDckSIkk7Vd+sxEhBQMRU8j/12UIRhzSaUdQ+rQU5kGeFxm+hb1oh6pWWmv3uvmReDl0UnvtapVaIzo1jZbf/pD6ElLqSX+rUmOQNpJFa/r+sa4e/pBlAABoAAAAA3CUgShLdGIxsY7AUABPRrgCABdDuQ5GC7DqPQCgbbJUAoRSUj+NIEig0YfyWUho1VBBBA//uQZB4ABZx5zfMakeAAAAmwAAAAF5F3P0w9GtAAACfAAAAAwLhMDmAYWMgVEG1U0FIGCBgXBXAtfMH10000EEEEEECUBYln03TTTdNBDZopopYvrTTdNa325mImNg3TTPV9q3pmY0xoO6bv3r00y+IDGid/9aaaZTGMuj9mpu9Mpio1dXrr5HERTZSmqU36A3CumzN/9Robv/Xx4v9ijkSRSNLQhAWumap82WRSBUqXStV/YcS+XVLnSS+WLDroqArFkMEsAS+eWmrUzrO0oEmE40RlMZ5+ODIkAyKAGUwZ3mVKmcamcJnMW26MRPgUw6j+LkhyHGVGYjSUUKNpuJUQoOIAyDvEyG8S5yfK6dhZc0Tx1KI/gviKL6qvvFs1+bWtaz58uUNnryq6kt5RzOCkPWlVqVX2a/EEBUdU1KrXLf40GoiiFXK///qpoiDXrOgqDR38JB0bw7SoL+ZB9o1RCkQjQ2CBYZKd/+VJxZRRZlqSkKiws0WFxUyCwsKiMy7hUVFhIaCrNQsKkTIsLivwKKigsj8XYlwt/WKi2N4d//uQRCSAAjURNIHpMZBGYiaQPSYyAAABLAAAAAAAACWAAAAApUF/Mg+0aohSIRobBAsMlO//Kk4soosy1JSFRYWaLC4qZBYWFRGZdwqKiwkNBVmoWFSJkWFxX4FFRQWR+LsS4W/rFRb/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////VEFHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU291bmRib3kuZGUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMjAwNGh0dHA6Ly93d3cuc291bmRib3kuZGUAAAAAAAAAACU=');  
+                    snd.play();
+                }
+                try {
+                    beep();
+                    setTimeout(beep, 500);
+                    setTimeout(beep, 1000);
+                } catch(e) {
+                    console.error('Sound error:', e);
+                }
+            ");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error playing sound: {ex.Message}");
+        }
+    }
+
+    private void ShowMedicationReminder(int compartmentIndex)
+    {
+        if (compartmentIndex >= 0 && compartmentIndex < compartments.Count && compartments[compartmentIndex] != null)
+        {
+            activeReminderCompartmentIndex = compartmentIndex;
+            activeReminderMedication = compartments[compartmentIndex];
+            
+            // Show the reminder page
+            HideAllPages();
+            showMedicationReminderPage = true;
+            StateHasChanged();
+        }
+    }
+
+    private void DismissReminder()
+    {
+        // Dismiss the reminder and go back to the menu
+        activeReminderCompartmentIndex = -1;
+        activeReminderMedication = null;
+        
+        BackToMenu();
+    }
+
+    private void UnlockCompartment()
+    {
+        if (activeReminderCompartmentIndex >= 0 && 
+            activeReminderCompartmentIndex < compartments.Count && 
+            compartments[activeReminderCompartmentIndex] != null)
+        {
+            // Set status to unlocked
+            compartments[activeReminderCompartmentIndex]!.ZetStatus(CompartimentStatus.Ontgrendeld);
+            
+            // Show the unlocked page
+            HideAllPages();
+            showCompartmentUnlockedPage = true;
+            StateHasChanged();
+            
+            // Play unlock sound
+            _ = JSRuntime.InvokeVoidAsync("eval", @"
+                try {
+                    var unlockSound = new Audio('data:audio/wav;base64,UklGRmQJAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YUAJAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA=');
+                    unlockSound.play();
+                } catch (e) {
+                    console.error('Sound error:', e);
+                }
+            ");
+        }
+    }
+
+    private void OpenCompartment()
+    {
+        if (activeReminderCompartmentIndex >= 0 && 
+            activeReminderCompartmentIndex < compartments.Count && 
+            compartments[activeReminderCompartmentIndex] != null)
+        {
+            // Set status to open
+            compartments[activeReminderCompartmentIndex]!.ZetStatus(CompartimentStatus.Open);
+            
+            // Show the open page
+            HideAllPages();
+            showCompartmentOpenPage = true;
+            StateHasChanged();
+            
+            // Play open sound
+            _ = JSRuntime.InvokeVoidAsync("eval", @"
+                try {
+                    var openSound = new Audio('data:audio/wav;base64,UklGRqQEAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YYAEAACBgIF/gn6Cf4B+gn2EfYZ8iHqKeYx3j3aQdZN0lHOWcphxmW+cbp5soWujaKRlpmSnYKpeq1ytWK9WsVSzULVNuEq6R7xEvEO/QME9wzrFOMc1yTLLMM0tzy7RKtMn1STVH9cd2RnbF90V3xLhEOIO5QzpCusI7QbvBPED9AH2//j9+vz8+v34//cB9wP2BfQH8wnyDO8O7RDsEusU6RbmGOQb4h3gH94i3CXaKNgq1S3UL9Iy0DTPN803zzvNPs1AzEPMRsxIy0rLTcpPylLKVcpXyVnJXMhfyGLHZsZpxm3FcMV0xHjDfMKAwYXBicCNwJG/lb+YwJvAn8CiwKbAqcCtwLDAs8C2wLnAvMC/wMLAxcDIwMjAzMDPwNPA1sDZwNzA38DiwOXA6MDrwO3A8MDywPXA98D6wPzA/sAAwQPBBcEIwQrBDMEPwRHBE8EWwRnBG8EewSDBJMEngSrBLcExwTTBOcE9wULBR8FNwVLBWcFewWXBbMF0wXvBg8GLwZTBnMGlwa7Bt8HAwcrB1MHewejB88H+wQjCE8IewijCNMI/wkvCVsJiwm/Ce8KIwpTCoMKtwrvCycLWwuTC8sIAw0/DzMN9w1DDKcMEw//C4MLDwqfCjcJ2wl/CR8IxwhvCCcL6we7B5MHawdHBycHCwb3BucG2wbTBssGywbLBtMG2wbnBvcHCwcjBz8HWweDG7cb7xgrHGccsxzzHUcdix3nHkMenx77H18fvxwjIJMg7yFjIdciUyLLI0cjvyA7JMMlMyXPJkMmzydnJAMonyU/JeMmiyc3J+MkjylHKfMqoytXKA8swy17Li8u6y+jLFsxGzHXMpMzTzAPNNc1lzZbNx83+zS7OYM6TzsbO+s4uzl/OdM6HzpvOq8642MgAyQTJC8kVySLJLsk9yU3JXclvyYLJl8msycLJ2Mnvyf7JFcosykLKXMp0yo7Kp8rAyt3K+MoUyzDLS8toyYbJlcmlybbJxsnXyenJ/MkOyiHKNspKyl7Kc8qIyp7KtMrLyuHK+MoPyyDLOMtQy2rLgsuay7TLzsvoy/3Le8xAzAXM0MufzXLNX9K20u3SDtMu01DY7Njv2PXY+9gC2QnZENkX2R7ZJtkv2TjZQtlM2VfZY9lu2XrZh9mV2aTZs9nC2djZ6dn62QzaH9oy2kfaXNpz2orai9qn2sTa4tr/2h7bPdtd24bAicCNwJLAlsCcwKDApsCrwLDAtsC7wMDAxcDLwNDA1sDdwOPA6MDvwPXA/MAAwQbBDMETwRnBIMEmwS3BNME7wULBSMFPwVbBXcFkwWvBcsF5wYDBh8GOwZXBnMGjwaoBrgG0AblAvAA=');
+                    openSound.play();
+                } catch (e) {
+                    console.error('Sound error:', e);
+                }
+            ");
+        }
+    }
+
+    private void TakeMedication()
+    {
+        if (activeReminderCompartmentIndex >= 0 && 
+            activeReminderCompartmentIndex < compartments.Count && 
+            compartments[activeReminderCompartmentIndex] != null)
+        {
+            // Take the medication
+            bool success = compartments[activeReminderCompartmentIndex]!.NeemMedicijn();
+            
+            // Log the intake
+            innameLogs.Add((activeReminderCompartmentIndex, DateTime.Now, success));
+            
+            // Close the compartment
+            compartments[activeReminderCompartmentIndex]!.ZetStatus(CompartimentStatus.Vergrendeld);
+            
+            // Show success alert
+            ShowAlert("Medicijn Genomen", $"U heeft succesvol {compartments[activeReminderCompartmentIndex]!.MedicijnNaam} ingenomen.<br>Resterende voorraad: {compartments[activeReminderCompartmentIndex]!.Voorraad}", "bg-success");
+            
+            // Play success sound
+            _ = JSRuntime.InvokeVoidAsync("eval", @"
+                try {
+                    var successSound = new Audio('data:audio/wav;base64,UklGRpQDAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YXADAAB/f39/f39/f39/f3+AgICAgICAgICAgICAgICAgIGBgYGBgYGBgYGBgoKCgoKCgoKCgoKCg4ODg4ODg4ODg4OEhISEhISEhISEhISFhYWFhYWFhYWFhYaGhoaGhoaGhoaGh4eHh4eHh4eHh4eIiIiIiIiIiIiJiYmJiYmJiYmJiYqKioqKioqKioqLi4uLi4uLi4uLjIyMjIyMjIyMjI2NjY2NjY2NjY2Ojo6Ojo6Ojo6Pj4+Pj4+Pj4+PkJCQkJCQkJCQkJGRkZGRkZGRkpKSkpKSkpKSkpOTk5OTk5OTk5OUlJSUlJSUlJWVlZWVlZWVlZWWlpaWlpaWlpaXl5eXl5eXl5eYmJiYmJiYmJiZmZmZmZmZmZmampqampqampqbm5ubm5ubm5ucnJycnJycnJycnZ2dnZ2dnZ2dnp6enp6enp6fn5+fn5+fn5+foKCgoKCgoKCgoaGhoaGhoaGhoqKioqKioqKio6Ojo6Ojo6Ojo6SkpKSkpKSkpKWlpaWlpaWlpaampqampqampqenp6enp6enp6ioqKioqKioqKmpqampqampqaqqqqqqqqqqqqurq6urq6urq6ysrKysrKysrKytra2tra2tra2urq6urq6urq6vr6+vr6+vr6+wsLCwsLCwsLCxsbGxsbGxsbGysrKysrKysrKzs7Ozs7Ozs7O0tLS0tLS0tLS1tbW1tbW1tbW2tra2tra2tra3t7e3t7e3t7e3uLi4uLi4uLi5ubm5ubm5ubm6urq6urq6urq7u7u7u7u7u7u8vLy8vLy8vLy9vb29vb29vb2+vr6+vr6+vr6/v7+/v7+/v7/AwMDAwMDAwMDBwcHBwcHBwcHCwsLCwsLCwsLDw8PDw8PDw8PExMTExMTExMTFxcXFxcXFxcXGxsbGxsbGxsbHx8fHx8fHx8fIyMjIyMjIyMjJycnJycnJycnKysrKysrKysrLy8vLy8vLy8vMzMzMzMzMzMzNzc3Nzc3Nzc3Ozs7Ozs7Ozs7Pz8/Pz8/Pz8/Q0NDQ0NDQ0NDR0dHR0dHR0dHS0tLS0tLS0tLT09PT09PT09PU1NTU1NTU1NTV1dXV1dXV1dXW1tbW1tbW1tbX19fX19fX19fY2NjY2NjY2NjZ2dnZ2dnZ2dnZ2tra2tra2tra29vb29vb29vb3Nzc3Nzc3Nzc3d3d3d3d3d3d3t7e3t7e3t7e39/f39/f39/f4ODg4ODg4ODg4eHh4eHh4eHh4uLi4uLi4uLi4+Pj4+Pj4+Pj5OTk5OTk5OTk5eXl5eXl5eXl5ubm5ubm5ubm5+fn5+fn5+fn6Ojo6Ojo6Ojo6enp6enp6enp6urq6urq6urq6+vr6+vr6+vr7Ozs7Ozs7Ozs7e3t7e3t7e3t7u7u7u7u7u7u7+/v7+/v7+/v8PDw8PDw8PDw8fHx8fHx8fHx8vLy8vLy8vLy8/Pz8/Pz8/Pz9PT09PT09PT09fX19fX19fX19vb29vb29vb29/f39/f39/f3+Pj4+Pj4+Pj4+fn5+fn5+fn5+vr6+vr6+vr6+/v7+/v7+/v7/Pz8/Pz8/Pz8/f39/f39/f39/v7+/v7+/v7+//////////8=');
+                    successSound.play();
+                } catch (e) {
+                    console.error('Sound error:', e);
+                }
+            ");
+            
+            // Clean up and go back to the menu
+            activeReminderCompartmentIndex = -1;
+            activeReminderMedication = null;
+            
+            BackToMenu();
+        }
+    }
+
+    private void CloseCompartmentWithoutTaking()
+    {
+        if (activeReminderCompartmentIndex >= 0 && 
+            activeReminderCompartmentIndex < compartments.Count && 
+            compartments[activeReminderCompartmentIndex] != null)
+        {
+            // Close the compartment without taking medication
+            compartments[activeReminderCompartmentIndex]!.ZetStatus(CompartimentStatus.Vergrendeld);
+            
+            // Log the missed intake
+            innameLogs.Add((activeReminderCompartmentIndex, DateTime.Now, false));
+            
+            // Show info alert
+            ShowAlert("Compartiment Gesloten", "Het compartiment is gesloten zonder medicijn te nemen", "bg-info");
+            
+            // Clean up and go back to the menu
+            activeReminderCompartmentIndex = -1;
+            activeReminderMedication = null;
+            
+            BackToMenu();
+        }
+    }
+
+    private void StartCountdownTimer(int compartmentIndex)
+    {
+        if (compartmentIndex >= 0 && compartmentIndex < compartments.Count && compartments[compartmentIndex] != null)
+        {
+            // Get the next medication time
+            DateTime nextMedicationTime = compartments[compartmentIndex]!.BerekenVolgendeInnameTijd();
+            
+            if (nextMedicationTime != DateTime.MaxValue)
+            {
+                // Set up the countdown variables
+                activeCountdownCompartmentIndex = compartmentIndex;
+                activeCountdownMedication = compartments[compartmentIndex];
+                activeCountdownTime = nextMedicationTime;
+                
+                // Update the countdown display
+                UpdateCountdownDisplay();
+                
+                // Start or restart the countdown timer
+                if (countdownTimer == null)
+                {
+                    countdownTimer = new Timer(1000);
+                    countdownTimer.Elapsed += (sender, e) => InvokeAsync(() => {
+                        UpdateCountdownDisplay();
+                        StateHasChanged();
+                    });
+                    countdownTimer.AutoReset = true;
+                    countdownTimer.Start();
+                }
+                else
+                {
+                    countdownTimer.Start();
+                }
+                
+                // Show the countdown page
+                HideAllPages();
+                showCountdownPage = true;
+                StateHasChanged();
+            }
+            else
+            {
+                ShowAlert("Geen Doseringstijden", "Er zijn geen doseringstijden ingesteld voor dit compartiment", "bg-warning");
+            }
+        }
+    }
+
+    private void UpdateCountdownDisplay()
+    {
+        if (activeCountdownMedication != null)
+        {
+            TimeSpan remainingTime = activeCountdownTime - DateTime.Now;
+            
+            if (remainingTime.TotalSeconds <= 0)
+            {
+                // Time's up!
+                countdownDisplay = "Tijd voor medicijn!";
+                
+                // Stop the timer
+                countdownTimer?.Stop();
+                
+                // Show reminder if not already showing
+                if (!showMedicationReminderPage)
+                {
+                    ShowMedicationReminder(activeCountdownCompartmentIndex);
+                }
+            }
+            else
+            {
+                // Format the remaining time
+                if (remainingTime.Days > 0)
+                {
+                    countdownDisplay = $"{remainingTime.Days}d {remainingTime.Hours}u {remainingTime.Minutes}m {remainingTime.Seconds}s";
+                }
+                else if (remainingTime.Hours > 0)
+                {
+                    countdownDisplay = $"{remainingTime.Hours}u {remainingTime.Minutes}m {remainingTime.Seconds}s";
+                }
+                else
+                {
+                    countdownDisplay = $"{remainingTime.Minutes}m {remainingTime.Seconds}s";
+                }
+            }
+        }
+    }
+
+    private void TriggerMedicijnHerinnering(int compartmentIndex)
+    {
+        ShowMedicationReminder(compartmentIndex);
+    }
+
+    private void BackToMenu()
+    {
+        HideAllPages();
+        showMenuPage = true;
+        StateHasChanged();
+    }
+
+    private void ShowStatus()
+    {
+        HideAllPages();
+        showStatusPage = true;
+        StateHasChanged();
+    }
+
+    private void ShowLogs()
+    {
+        HideAllPages();
+        showLogsPage = true;
+        StateHasChanged();
+    }
+
+    private void ConfigureCompartment()
+    {
+        // Reset configuration form
+        selectedCompartmentIndex = 0;
+        configMedicationName = "";
+        configMedicationDosage = "";
+        configDosingTimes = new List<TimeSpan>();
+        configMedicationStock = 0;
+        
+        // Add first empty dosing time
+        AddDosingTime();
+        
+        HideAllPages();
+        showConfigurePage = true;
+        StateHasChanged();
+    }
+
+    private void ConfigureSpecificCompartment(int index)
+    {
+        selectedCompartmentIndex = index;
+        configMedicationName = "";
+        configMedicationDosage = "";
+        configDosingTimes = new List<TimeSpan>();
+        configMedicationStock = 0;
+        
+        // Add first empty dosing time
+        AddDosingTime();
+        
+        HideAllPages();
+        showConfigurePage = true;
+        StateHasChanged();
+    }
+
+    private void AddDosingTime()
+    {
+        configDosingTimes.Add(new TimeSpan(8, 0, 0)); // Default to 8:00 AM
+    }
+
+    private void UpdateDosingTime(int index, string? timeString)
+    {
+        if (timeString != null && index >= 0 && index < configDosingTimes.Count)
+        {
+            string[] parts = timeString.Split(':');
+            if (parts.Length >= 2 && int.TryParse(parts[0], out int hours) && int.TryParse(parts[1], out int minutes))
+            {
+                configDosingTimes[index] = new TimeSpan(hours, minutes, 0);
+            }
+        }
+    }
+
+    private void RemoveDosingTime(int index)
+    {
+        if (index >= 0 && index < configDosingTimes.Count)
+        {
+            configDosingTimes.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    private void SaveCompartmentConfig()
+    {
+        if (string.IsNullOrWhiteSpace(configMedicationName) || 
+            string.IsNullOrWhiteSpace(configMedicationDosage))
+        {
+            ShowAlert("Fout", "Vul alle verplichte velden in", "bg-danger");
+            return;
+        }
+        
+        // Configure the compartment
+        ConfigureerCompartiment(selectedCompartmentIndex, configMedicationName, configMedicationDosage);
+        
+        // Add dosing times
+        foreach (var time in configDosingTimes)
+        {
+            compartments[selectedCompartmentIndex]?.VoegDoseringstijdToe(time.Hours, time.Minutes);
+        }
+        
+        // Add stock
+        if (configMedicationStock > 0)
+        {
+            compartments[selectedCompartmentIndex]?.VulVoorraadBij(configMedicationStock);
+        }
+        
+        ShowAlert("Compartiment Geconfigureerd", $"Compartiment {selectedCompartmentIndex + 1} is succesvol geconfigureerd met {configMedicationName}", "bg-success");
+        
+        // Go back to the status page
+        ShowStatus();
+    }
+
+    private void RefillCompartment()
+    {
+        // Reset refill form
+        selectedRefillCompartmentIndex = 0;
+        refillAmount = 1;
+        
+        HideAllPages();
+        showRefillPage = true;
+        StateHasChanged();
+    }
+
+    private void SaveRefill()
+    {
+        if (refillAmount <= 0)
+        {
+            ShowAlert("Fout", "Vul een geldig aantal in", "bg-danger");
+            return;
+        }
+        
+        if (compartments[selectedRefillCompartmentIndex] != null)
+        {
+            // Add to the stock
+            compartments[selectedRefillCompartmentIndex]!.VulVoorraadBij(refillAmount);
+            
+            ShowAlert("Compartiment Bijgevuld", $"Compartiment {selectedRefillCompartmentIndex + 1} is bijgevuld met {refillAmount} {compartments[selectedRefillCompartmentIndex]!.MedicijnNaam}", "bg-success");
+            
+            // Go back to the status page
+            ShowStatus();
+        }
+        else
+        {
+            ShowAlert("Fout", "Dit compartiment is niet geconfigureerd", "bg-danger");
+        }
+    }
+
+    private void EmergencyUnlock()
+    {
+        ShowAlert("Noodontgrendeling", "Alle compartimenten worden ontgrendeld. <br><br><button class='btn btn-danger' onclick='document.querySelector(\".toast .btn-close\").click(); document.getElementById(\"confirm-emergency\").click();'>Bevestig Noodontgrendeling</button>", "bg-danger");
+        
+        // We need to wait for the alert to be shown before we can add the JavaScript
+        _ = JSRuntime.InvokeVoidAsync("eval", @"
+            setTimeout(function() {
+                document.getElementById('confirm-emergency').addEventListener('click', function() {
+                    window.confirmEmergencyUnlock();
+                });
+            }, 100);
+        ");
+        
+        // Set up the JavaScript callback
+        _ = JSRuntime.InvokeVoidAsync("window.confirmEmergencyUnlock", (Action)(() => {
+            // Unlock all compartments
+            for (int i = 0; i < compartments.Count; i++)
+            {
+                if (compartments[i] != null)
+                {
+                    compartments[i]!.ZetStatus(CompartimentStatus.Ontgrendeld);
+                }
+            }
+            
+            // Play emergency sound
+            _ = JSRuntime.InvokeVoidAsync("eval", @"
+                try {
+                    var emergencySound = new Audio('data:audio/wav;base64,UklGRpwFAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YXgFAAB/gICAf3+AgX+Af4GAf4F/gIGAf4GAgH+BgIB/gYCAf4GAgH+BgIB/gYCAf4GAgH+BgH+AgX+AgX+AgYB/gYB/gYGAf4GAf4GBgH+BgH+BgYB/gYB/gYGAf4GAgICBgICAgYCAgIGAgICBgICAgYCAgIGAgICBgICAgYCAVnErp5KcwLnX1env8PL19Pb4+Pn6+/v7/Pz8/f39/f3+/v7+/v/+/v///v////7//v//////////////////////////////////////////////////////////+vHo28i0nYNkSCgHg4ODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4JsUTasmKjGv9zc6O7w8vX2+Pj5+vv7+/z8/P39/f39/v7+/v7//v7////+/////v////////////////////Pt5dXDrZV5WDQTCgQEg4ODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4JsUTasmKjGv9zc6O7w8vX2+Pj5+vv7+/z8/P39/f39/v7+/v7//v7////+/////v//////////////////+vHo28i0nYNkSCgHg4ODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgmxRNqyYqMa/3Nzo7vDy9fb4+Pn6+/v7/Pz8/f39/f3+/v7+/v/+/v////7////+//////////////7////69vPu5tvMu6iReGRLMxYHg4ODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgmxRNqyYqMa/3Nzo7vDy9fb4+Pn6+/v7/Pz8/f39/f3+/v7+/v/+/v////7////+//////////////7////69vPu5tvMu6iReGRLMxYHg4ODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4JsUTasmKjGv9zc6O7w8vX2+Pj5+vv7+/z8/P39/f39/v7+/v7//v7////+/////v///////////////////vz7+PXy7unj3dPIvLCkkH1rVz8mEQcEBYODg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDgmxRNqyYqMa/3Nzo7vDy9fb4+Pn6+/v7/Pz8/f39/f3+/v7+/v/+/v////7////+/////////////////////v7+/f38+/r59vTx7Onl4NrTzMW9taqfk4Z6blJBKxcIAwSEBIODg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgmxRNqyYqMa/3Nzo7vDy9fb4+Pn6+/v7/Pz8/f39/f3+/v7+/v/+/v////7////+/////////////////////v7+/f38+/r59vTx7Onl4NrTzMW9taqfk4Z6blJBKxcIAwSEBIODg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgoODgoKDg4KCg4OCgmVIL6aRm7+41tno7/Dx9PX3+Pj5+vr7+/z8/P39/f39/v7+/v7+/v7///////////////////8=');
+                    emergencySound.play();
+                } catch (e) {
+                    console.error('Sound error:', e);
+                }
+            ");
+            
+            // Show success alert
+            ShowAlert("Noodontgrendeling Uitgevoerd", "Alle compartimenten zijn ontgrendeld", "bg-warning");
+            
+            // Go back to status page
+            ShowStatus();
+        }));
+    }
+
+    private void TestMedicationReminder()
+    {
+        // Go to status page which has test buttons
+        ShowStatus();
+        
+        // Show info
+        ShowAlert("Test Medicatie Herinnering", "Klik op de 'Test Herinnering' knop bij een compartiment om een test uit te voeren", "bg-info");
+    }
+
+    private void StartCountdownForNextMedication()
+    {
+        // Find the compartment with the earliest next dosage
+        int nextCompartmentIndex = -1;
+        DateTime nextDosageTime = DateTime.MaxValue;
+        
+        for (int i = 0; i < compartments.Count; i++)
+        {
+            if (compartments[i] != null)
+            {
+                DateTime dosageTime = compartments[i]!.BerekenVolgendeInnameTijd();
+                
+                if (dosageTime < nextDosageTime)
+                {
+                    nextDosageTime = dosageTime;
+                    nextCompartmentIndex = i;
+                }
+            }
+        }
+        
+        if (nextCompartmentIndex != -1)
+        {
+            StartCountdownTimer(nextCompartmentIndex);
+        }
+        else
+        {
+            ShowAlert("Geen Medicijnen", "Er zijn geen medicijnen geconfigureerd", "bg-warning");
+        }
+    }
+
+    private void StartCountdownForSpecificMedication()
+    {
+        // Go to status page which has timer buttons
+        ShowStatus();
+        
+        // Show info
+        ShowAlert("Countdown Timer", "Klik op de 'Toon Timer' knop bij een compartiment om een countdown te starten", "bg-info");
+    }
+
+    private void ShowAlert(string title, string message, string headerClass)
+    {
+        alertTitle = title;
+        alertMessage = message;
+        alertHeaderClass = headerClass;
+        showAlert = true;
+        StateHasChanged();
+    }
+
+    private void CloseAlert()
+    {
+        showAlert = false;
+        StateHasChanged();
+    }
+
+    private void HideAllPages()
+    {
+        showMenuPage = false;
+        showStatusPage = false;
+        showLogsPage = false;
+        showConfigurePage = false;
+        showRefillPage = false;
+        showCountdownPage = false;
+        showMedicationReminderPage = false;
+        showCompartmentUnlockedPage = false;
+        showCompartmentOpenPage = false;
+    }
+
+    public void Dispose()
+    {
+        // Clean up timers
+        checkMedicationsTimer?.Dispose();
+        countdownTimer?.Dispose();
+    }
+}
