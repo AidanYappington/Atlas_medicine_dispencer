@@ -1,4 +1,4 @@
-namespace Dissssssssssssssssssss.Data;
+namespace AtlasDispenserApp.Data;
 
 public class WeatherForecastService
 {
