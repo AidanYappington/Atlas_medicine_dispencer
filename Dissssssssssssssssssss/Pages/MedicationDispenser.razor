@@ -1,0 +1,928 @@
+@page "/medication-dispenser"
+@using System
+@using System.Collections.Generic
+@using System.Device.Gpio
+@using System.Timers
+@using System.Threading.Tasks
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<div class="container">
+    <div class="header mb-4">
+        <h1 class="text-center p-3 bg-primary text-white rounded">Thuis Medicijn Dispenser</h1>
+    </div>
+
+    @if (showMenuPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0">Menu</h3>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <button class="list-group-item list-group-item-action" @onclick="ShowStatus">1. Toon status van alle compartimenten</button>
+                    <button class="list-group-item list-group-item-action" @onclick="ShowLogs">2. Medicijninname logboek bekijken</button>
+                    <button class="list-group-item list-group-item-action" @onclick="ConfigureCompartment">3. Configureer een compartiment</button>
+                    <button class="list-group-item list-group-item-action" @onclick="RefillCompartment">4. Vul een compartiment bij</button>
+                    <button class="list-group-item list-group-item-action bg-danger text-white" @onclick="EmergencyUnlock">5. Noodontgrendeling</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (showStatusPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Medicijn Dispenser Status</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                @if (compartments.Count == 0 || compartments.All(c => c == null))
+                {
+                    <div class="alert alert-warning">
+                        <h4>Geen medicijnen geconfigureerd</h4>
+                    </div>
+                }
+                else
+                {
+                    <div class="row">
+                        @for (int i = 0; i < compartments.Count; i++)
+                        {
+                            var compartment = compartments[i];
+                            var index = i;
+                            
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header">
+                                        <h4>Compartiment @(index + 1)</h4>
+                                    </div>
+                                    <div class="card-body">
+                                        @if (compartment != null)
+                                        {
+                                            <p><strong>Medicijn:</strong> @compartment.MedicijnNaam (@compartment.Dosis)</p>
+                                            <p><strong>Voorraad:</strong> @compartment.Voorraad tabletten</p>
+                                            <p>
+                                                <strong>Status:</strong>
+                                                @switch (compartment.Status)
+                                                {
+                                                    case CompartimentStatus.Vergrendeld:
+                                                        <span class="badge bg-danger">VERGRENDELD</span>
+                                                        break;
+                                                    case CompartimentStatus.Ontgrendeld:
+                                                        <span class="badge bg-warning">ONTGRENDELD</span>
+                                                        break;
+                                                    case CompartimentStatus.Open:
+                                                        <span class="badge bg-success">OPEN</span>
+                                                        break;
+                                                }
+                                            </p>
+                                            <p><strong>Volgende dosering:</strong> @compartment.VolgendeDoseringstijd()</p>
+                                            
+                                            <button class="btn btn-outline-success btn-sm" @onclick="() => TriggerMedicijnHerinnering(index)">
+                                                Test Herinnering
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">Niet geconfigureerd</p>
+                                            <button class="btn btn-primary btn-sm" @onclick="() => ConfigureSpecificCompartment(index)">
+                                                Configureren
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (showLogsPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Medicijn Inname Log</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                @if (innameLogs.Count == 0)
+                {
+                    <div class="alert alert-info">Geen medicijnen ingenomen.</div>
+                }
+                else
+                {
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Tijd</th>
+                                <th>Compartiment</th>
+                                <th>Medicijn</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in innameLogs)
+                            {
+                                string medicijnNaam = compartments[log.compartimentNr] != null 
+                                    ? compartments[log.compartimentNr].MedicijnNaam 
+                                    : "Onbekend";
+                                
+                                <tr>
+                                    <td>@log.tijdstip.ToString("dd-MM-yyyy HH:mm")</td>
+                                    <td>@(log.compartimentNr + 1)</td>
+                                    <td>@medicijnNaam</td>
+                                    <td>
+                                        @if (log.genomen)
+                                        {
+                                            <span class="badge bg-success">Genomen</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">Gemist</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    }
+
+    @if (showConfigurePage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Compartiment Configuratie</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="compartment-select" class="form-label">Compartiment:</label>
+                    <select id="compartment-select" class="form-select" @bind="selectedCompartmentIndex">
+                        @for (int i = 0; i < compartments.Count; i++)
+                        {
+                            <option value="@i">Compartiment @(i + 1)</option>
+                        }
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="medication-name" class="form-label">Medicijn naam:</label>
+                    <input id="medication-name" type="text" class="form-control" @bind="configMedicationName" />
+                </div>
+                
+                <div class="mb-3">
+                    <label for="medication-dosage" class="form-label">Dosering:</label>
+                    <input id="medication-dosage" type="text" class="form-control" @bind="configMedicationDosage" />
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Doseringstijden:</label>
+                    
+                    @foreach (var time in configDosingTimes)
+                    {
+                        var index = configDosingTimes.IndexOf(time);
+                        <div class="input-group mb-2">
+                            <input type="time" class="form-control" value="@time.ToString(@"hh\:mm")" 
+                                @onchange="@(e => UpdateDosingTime(index, e.Value?.ToString()))" />
+                            <button class="btn btn-outline-danger" @onclick="() => RemoveDosingTime(index)">
+                                Verwijder
+                            </button>
+                        </div>
+                    }
+                    
+                    <button class="btn btn-outline-primary" @onclick="AddDosingTime">
+                        Tijdstip toevoegen
+                    </button>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="medication-stock" class="form-label">Beginvoorraad:</label>
+                    <input id="medication-stock" type="number" class="form-control" @bind="configMedicationStock" min="0" />
+                </div>
+                
+                <button class="btn btn-primary" @onclick="SaveCompartmentConfig">Opslaan</button>
+            </div>
+        </div>
+    }
+
+    @if (showRefillPage)
+    {
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h3 class="mb-0">Compartiment Bijvullen</h3>
+                <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label for="refill-compartment-select" class="form-label">Compartiment:</label>
+                    <select id="refill-compartment-select" class="form-select" @bind="selectedRefillCompartmentIndex">
+                        @for (int i = 0; i < compartments.Count; i++)
+                        {
+                            if (compartments[i] != null)
+                            {
+                                <option value="@i">Compartiment @(i + 1) - @compartments[i].MedicijnNaam (@compartments[i].Voorraad)</option>
+                            }
+                        }
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="refill-amount" class="form-label">Aantal toe te voegen:</label>
+                    <input id="refill-amount" type="number" class="form-control" @bind="refillAmount" min="1" />
+                </div>
+                
+                <button class="btn btn-primary" @onclick="SaveRefill">Bijvullen</button>
+            </div>
+        </div>
+    }
+
+    @if (showMedicationReminderPage)
+    {
+        <div class="card mb-4 reminder-alert">
+            <div class="card-header bg-danger text-white">
+                <h3 class="mb-0">MEDICIJN HERINNERING</h3>
+            </div>
+            <div class="card-body text-center">
+                <h2 class="mb-3">Het is tijd om uw medicijn te nemen:</h2>
+                
+                <div class="medication-info my-4">
+                    <h3 class="text-primary">@activeReminderMedication.MedicijnNaam</h3>
+                    <p class="lead">@activeReminderMedication.Dosis</p>
+                    <p class="mb-4">Compartiment @(activeReminderCompartmentIndex + 1)</p>
+                    <div class="alert alert-success">
+                        <p>Het compartiment is nu open.</p>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success btn-lg mb-2" @onclick="TakeMedication">
+                    Ik heb mijn medicijn genomen
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="DismissReminder">
+                    Later Herinneren
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (showAlert)
+    {
+        <div class="position-fixed top-0 start-0 end-0 p-3" style="z-index: 1050;">
+            <div class="toast show mx-auto" role="alert">
+                <div class="toast-header @alertHeaderClass">
+                    <strong class="me-auto text-white">@alertTitle</strong>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CloseAlert"></button>
+                </div>
+                <div class="toast-body">
+                    @((MarkupString)alertMessage)
+                </div>
+            </div>
+        </div>
+    }
+    
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-danger mt-4">
+            <h4>Foutmelding:</h4>
+            <p>@errorMessage</p>
+        </div>
+    }
+</div>
+
+@code {
+    // GPIO configuratie
+    private GpioController? gpio;
+    private Timer? ledBlinkTimer;
+    private bool ledState = false;
+    private const int LED_PIN = 14; // Deze pin zal knipperen als een compartiment open is
+    private string? errorMessage;
+    private Dictionary<int, int> compartmentPins = new Dictionary<int, int>
+    {
+        { 0, 5 },  // Compartiment 1 -> GPIO 5
+        { 1, 6 },  // Compartiment 2 -> GPIO 6
+        { 2, 13 }, // Compartiment 3 -> GPIO 13
+        { 3, 19 }  // Compartiment 4 -> GPIO 19
+    };
+    
+    enum CompartimentStatus { Vergrendeld, Ontgrendeld, Open }
+    
+    class MedicijnCompartiment
+    {
+        public string MedicijnNaam { get; private set; }
+        public string Dosis { get; private set; }
+        public int CompartimentNummer { get; private set; }
+        public CompartimentStatus Status { get; private set; }
+        public int Voorraad { get; private set; }
+        public List<TimeSpan> DoseringstijdenPerDag { get; private set; } = new List<TimeSpan>();
+        public DateTime? LaatsteOpeningTijd { get; private set; }
+
+        public MedicijnCompartiment(int nummer, string medicijnNaam, string dosis)
+        {
+            CompartimentNummer = nummer;
+            MedicijnNaam = medicijnNaam;
+            Dosis = dosis;
+            Status = CompartimentStatus.Vergrendeld;
+            Voorraad = 0;
+        }
+
+        public void VoegDoseringstijdToe(int uur, int minuut) => 
+            DoseringstijdenPerDag.Add(new TimeSpan(uur, minuut, 0));
+
+        public bool IsHetTijdVoorDosering(DateTime nu)
+        {
+            TimeSpan huidigeTijd = nu.TimeOfDay;
+            
+            foreach (TimeSpan tijd in DoseringstijdenPerDag)
+            {
+                if (Math.Abs((huidigeTijd - tijd).TotalMinutes) <= 5)
+                    return true;
+            }
+            
+            return false;
+        }
+
+        public void VulVoorraadBij(int aantal) => Voorraad += aantal;
+
+        public bool NeemMedicijn()
+        {
+            if (Voorraad > 0)
+            {
+                Voorraad--;
+                LaatsteOpeningTijd = DateTime.Now;
+                return true;
+            }
+            return false;
+        }
+
+        public void ZetStatus(CompartimentStatus nieuweStatus) => Status = nieuweStatus;
+
+        public string VolgendeDoseringstijd()
+        {
+            if (DoseringstijdenPerDag.Count == 0)
+                return "Geen tijden ingesteld";
+
+            DateTime nu = DateTime.Now;
+            TimeSpan huidigeTijd = nu.TimeOfDay;
+            
+            TimeSpan? volgende = null;
+            double kortsteWachttijd = double.MaxValue;
+            
+            foreach (TimeSpan tijd in DoseringstijdenPerDag)
+            {
+                double wachttijdMinuten = tijd > huidigeTijd 
+                    ? (tijd - huidigeTijd).TotalMinutes 
+                    : (TimeSpan.FromHours(24) - huidigeTijd + tijd).TotalMinutes;
+                
+                if (wachttijdMinuten < kortsteWachttijd)
+                {
+                    kortsteWachttijd = wachttijdMinuten;
+                    volgende = tijd;
+                }
+            }
+            
+            if (volgende.HasValue)
+            {
+                DateTime volgendeDosering = volgende.Value > huidigeTijd
+                    ? nu.Date.Add(volgende.Value)
+                    : nu.Date.AddDays(1).Add(volgende.Value);
+                
+                return volgendeDosering.ToString("dd-MM HH:mm");
+            }
+            
+            return "Onbekend";
+        }
+    }
+
+    // View state
+    private bool showMenuPage = true;
+    private bool showStatusPage = false;
+    private bool showLogsPage = false;
+    private bool showConfigurePage = false;
+    private bool showRefillPage = false;
+    private bool showMedicationReminderPage = false;
+    private bool showAlert = false;
+    
+    // Alert properties
+    private string alertTitle = "";
+    private string alertMessage = "";
+    private string alertHeaderClass = "bg-primary";
+    
+    // Data
+    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
+    private List<(int compartimentNr, DateTime tijdstip, bool genomen)> innameLogs = new List<(int, DateTime, bool)>();
+    private Timer? checkMedicationsTimer;
+    
+    // Configuration 
+    private int selectedCompartmentIndex = 0;
+    private string configMedicationName = "";
+    private string configMedicationDosage = "";
+    private List<TimeSpan> configDosingTimes = new List<TimeSpan>();
+    private int configMedicationStock = 0;
+    
+    // Refill 
+    private int selectedRefillCompartmentIndex = 0;
+    private int refillAmount = 1;
+    
+    // Reminder 
+    private int activeReminderCompartmentIndex = -1;
+    private MedicijnCompartiment? activeReminderMedication = null;
+
+    protected override void OnInitialized()
+    {
+        // Initialize with 4 empty compartments
+        for (int i = 0; i < 4; i++)
+            compartments.Add(null);
+        
+        // Check medication schedules every minute
+        checkMedicationsTimer = new Timer(60000);
+        checkMedicationsTimer.Elapsed += CheckMedicationsTimerElapsed;
+        checkMedicationsTimer.AutoReset = true;
+        checkMedicationsTimer.Start();
+        
+        // Initialize GPIO
+        InitializeGpio();
+        
+        // Setup example
+        SetupVoorbeeldDispenser();
+    }
+
+    private void InitializeGpio()
+    {
+        try 
+        {
+            gpio = new GpioController();
+            
+            // Initialiseer LED pin - controleer eerst of deze al open is
+            if (!gpio.IsPinOpen(LED_PIN))
+            {
+                gpio.OpenPin(LED_PIN, PinMode.Output);
+                gpio.Write(LED_PIN, PinValue.Low);
+                Console.WriteLine($"LED pin {LED_PIN} succesvol geopend");
+            }
+            
+            // Initialiseer compartiment pins - controleer eerst of ze al open zijn
+            foreach (var pinPair in compartmentPins)
+            {
+                int pin = pinPair.Value;
+                if (!gpio.IsPinOpen(pin))
+                {
+                    gpio.OpenPin(pin, PinMode.Output);
+                    gpio.Write(pin, PinValue.Low); // Begin met alle compartimenten vergrendeld
+                    Console.WriteLine($"Compartiment pin {pin} succesvol geopend");
+                }
+            }
+
+            // Setup LED blink timer
+            ledBlinkTimer = new Timer(500); // 0.5 seconde interval voor knipperen
+            ledBlinkTimer.Elapsed += LedBlinkTimerElapsed;
+            ledBlinkTimer.AutoReset = true;
+            
+            Console.WriteLine("GPIO initialisatie succesvol");
+            errorMessage = null;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"GPIO initialisatie mislukt: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+
+    private void LedBlinkTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        try
+        {
+            if (gpio != null && gpio.IsPinOpen(LED_PIN))
+            {
+                ledState = !ledState;
+                gpio.Write(LED_PIN, ledState ? PinValue.High : PinValue.Low);
+                
+                // Log voor debug
+                Console.WriteLine($"LED status: {(ledState ? "AAN" : "UIT")}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Fout bij LED bediening: {ex.Message}");
+        }
+    }
+
+    private void SetupVoorbeeldDispenser()
+    {
+        // Example: Paracetamol
+        ConfigureerCompartiment(0, "Paracetamol", "500mg");
+        compartments[0]?.VoegDoseringstijdToe(8, 0);
+        compartments[0]?.VoegDoseringstijdToe(20, 0);
+        compartments[0]?.VulVoorraadBij(30);
+        
+        // Example: Vitamine D
+        ConfigureerCompartiment(1, "Vitamine D", "25mcg");
+        compartments[1]?.VoegDoseringstijdToe(8, 0);
+        compartments[1]?.VulVoorraadBij(60);
+    }
+
+    private void ConfigureerCompartiment(int compartimentNr, string medicijnNaam, string dosis)
+    {
+        if (compartimentNr >= 0 && compartimentNr < compartments.Count)
+            compartments[compartimentNr] = new MedicijnCompartiment(compartimentNr + 1, medicijnNaam, dosis);
+    }
+
+    private void CheckMedicationsTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        DateTime now = DateTime.Now;
+        
+        for (int i = 0; i < compartments.Count; i++)
+        {
+            if (compartments[i] != null && 
+                compartments[i]!.IsHetTijdVoorDosering(now) && 
+                compartments[i]!.Status == CompartimentStatus.Vergrendeld)
+            {
+                InvokeAsync(() => ShowMedicationReminder(i));
+                break;
+            }
+        }
+    }
+    
+    // GPIO methodes voor compartiment besturing
+    private void OpenCompartmentGpio(int compartmentIndex)
+    {
+        try
+        {
+            if (gpio != null && compartmentPins.ContainsKey(compartmentIndex))
+            {
+                int pin = compartmentPins[compartmentIndex];
+                if (gpio.IsPinOpen(pin))
+                {
+                    gpio.Write(pin, PinValue.High); // Activeer het compartiment
+                    Console.WriteLine($"Compartiment {compartmentIndex + 1} geopend op pin {pin}");
+                }
+                
+                // Start LED knipperen
+                StartLedBlink();
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Fout bij openen compartiment: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+
+    private void CloseCompartmentGpio(int compartmentIndex)
+    {
+        try
+        {
+            if (gpio != null && compartmentPins.ContainsKey(compartmentIndex))
+            {
+                int pin = compartmentPins[compartmentIndex];
+                if (gpio.IsPinOpen(pin))
+                {
+                    gpio.Write(pin, PinValue.Low); // Sluit het compartiment
+                    Console.WriteLine($"Compartiment {compartmentIndex + 1} gesloten op pin {pin}");
+                }
+                
+                // Check of we LED moeten stoppen met knipperen
+                bool anyOpen = compartments.Any(c => c != null && c.Status == CompartimentStatus.Open);
+                if (!anyOpen)
+                {
+                    StopLedBlink();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Fout bij sluiten compartiment: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+    
+    private void StartLedBlink()
+    {
+        try
+        {
+            if (ledBlinkTimer != null && !ledBlinkTimer.Enabled)
+            {
+                ledBlinkTimer.Start();
+                Console.WriteLine("LED knipperen gestart");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Fout bij het starten van LED knipperen: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+    
+    private void StopLedBlink()
+    {
+        try
+        {
+            if (ledBlinkTimer != null && ledBlinkTimer.Enabled)
+            {
+                ledBlinkTimer.Stop();
+                if (gpio != null && gpio.IsPinOpen(LED_PIN))
+                {
+                    gpio.Write(LED_PIN, PinValue.Low);
+                    ledState = false;
+                }
+                Console.WriteLine("LED knipperen gestopt");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Fout bij het stoppen van LED knipperen: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+    
+    private void ShowMedicationReminder(int compartmentIndex)
+    {
+        if (compartmentIndex >= 0 && compartmentIndex < compartments.Count && compartments[compartmentIndex] != null)
+        {
+            activeReminderCompartmentIndex = compartmentIndex;
+            activeReminderMedication = compartments[compartmentIndex];
+            
+            // Open compartiment en zet status op open
+            compartments[compartmentIndex]!.ZetStatus(CompartimentStatus.Open);
+            OpenCompartmentGpio(compartmentIndex);
+            
+            HideAllPages();
+            showMedicationReminderPage = true;
+            StateHasChanged();
+        }
+    }
+
+    private void DismissReminder()
+    {
+        if (activeReminderCompartmentIndex >= 0)
+        {
+            // Sluit compartiment bij afwijzen van herinnering
+            compartments[activeReminderCompartmentIndex]!.ZetStatus(CompartimentStatus.Vergrendeld);
+            CloseCompartmentGpio(activeReminderCompartmentIndex);
+            
+            // Log als gemist
+            innameLogs.Add((activeReminderCompartmentIndex, DateTime.Now, false));
+        }
+        
+        activeReminderCompartmentIndex = -1;
+        activeReminderMedication = null;
+        BackToMenu();
+    }
+
+    private void TakeMedication()
+    {
+        if (activeReminderCompartmentIndex >= 0 && 
+            activeReminderCompartmentIndex < compartments.Count && 
+            compartments[activeReminderCompartmentIndex] != null)
+        {
+            // Take medication
+            bool success = compartments[activeReminderCompartmentIndex]!.NeemMedicijn();
+            
+            // Log intake
+            innameLogs.Add((activeReminderCompartmentIndex, DateTime.Now, success));
+            
+            // Lock compartment
+            compartments[activeReminderCompartmentIndex]!.ZetStatus(CompartimentStatus.Vergrendeld);
+            CloseCompartmentGpio(activeReminderCompartmentIndex);
+            
+            // Show success message
+            ShowAlert("Medicijn Genomen", 
+                $"U heeft {compartments[activeReminderCompartmentIndex]!.MedicijnNaam} ingenomen.<br>Voorraad: {compartments[activeReminderCompartmentIndex]!.Voorraad}", 
+                "bg-success");
+            
+            // Reset and go back
+            activeReminderCompartmentIndex = -1;
+            activeReminderMedication = null;
+            BackToMenu();
+        }
+    }
+
+    private void TriggerMedicijnHerinnering(int compartmentIndex)
+    {
+        ShowMedicationReminder(compartmentIndex);
+    }
+
+    private void BackToMenu()
+    {
+        HideAllPages();
+        showMenuPage = true;
+        StateHasChanged();
+    }
+
+    private void ShowStatus()
+    {
+        HideAllPages();
+        showStatusPage = true;
+        StateHasChanged();
+    }
+
+    private void ShowLogs()
+    {
+        HideAllPages();
+        showLogsPage = true;
+        StateHasChanged();
+    }
+
+    private void ConfigureCompartment()
+    {
+        selectedCompartmentIndex = 0;
+        configMedicationName = "";
+        configMedicationDosage = "";
+        configDosingTimes = new List<TimeSpan>();
+        configMedicationStock = 0;
+        
+        AddDosingTime();
+        
+        HideAllPages();
+        showConfigurePage = true;
+        StateHasChanged();
+    }
+
+    private void ConfigureSpecificCompartment(int index)
+    {
+        selectedCompartmentIndex = index;
+        configMedicationName = "";
+        configMedicationDosage = "";
+        configDosingTimes = new List<TimeSpan>();
+        configMedicationStock = 0;
+        
+        AddDosingTime();
+        
+        HideAllPages();
+        showConfigurePage = true;
+        StateHasChanged();
+    }
+
+    private void AddDosingTime()
+    {
+        configDosingTimes.Add(new TimeSpan(8, 0, 0)); // Default: 8:00
+    }
+
+    private void UpdateDosingTime(int index, string? timeString)
+    {
+        if (timeString != null && index >= 0 && index < configDosingTimes.Count)
+        {
+            string[] parts = timeString.Split(':');
+            if (parts.Length >= 2 && int.TryParse(parts[0], out int hours) && int.TryParse(parts[1], out int minutes))
+            {
+                configDosingTimes[index] = new TimeSpan(hours, minutes, 0);
+            }
+        }
+    }
+
+    private void RemoveDosingTime(int index)
+    {
+        if (index >= 0 && index < configDosingTimes.Count)
+        {
+            configDosingTimes.RemoveAt(index);
+            StateHasChanged();
+        }
+    }
+
+    private void SaveCompartmentConfig()
+    {
+        if (string.IsNullOrWhiteSpace(configMedicationName) || 
+            string.IsNullOrWhiteSpace(configMedicationDosage))
+        {
+            ShowAlert("Fout", "Vul alle verplichte velden in", "bg-danger");
+            return;
+        }
+        
+        ConfigureerCompartiment(selectedCompartmentIndex, configMedicationName, configMedicationDosage);
+        
+        foreach (var time in configDosingTimes)
+            compartments[selectedCompartmentIndex]?.VoegDoseringstijdToe(time.Hours, time.Minutes);
+        
+        if (configMedicationStock > 0)
+            compartments[selectedCompartmentIndex]?.VulVoorraadBij(configMedicationStock);
+        
+        ShowAlert("Compartiment Geconfigureerd", 
+            $"Compartiment {selectedCompartmentIndex + 1} is ingesteld met {configMedicationName}", 
+            "bg-success");
+        
+        ShowStatus();
+    }
+
+    private void RefillCompartment()
+    {
+        selectedRefillCompartmentIndex = 0;
+        refillAmount = 1;
+        
+        HideAllPages();
+        showRefillPage = true;
+        StateHasChanged();
+    }
+
+    private void SaveRefill()
+    {
+        if (refillAmount <= 0)
+        {
+            ShowAlert("Fout", "Vul een geldig aantal in", "bg-danger");
+            return;
+        }
+        
+        if (compartments[selectedRefillCompartmentIndex] != null)
+        {
+            compartments[selectedRefillCompartmentIndex]!.VulVoorraadBij(refillAmount);
+            
+            ShowAlert("Compartiment Bijgevuld", 
+                $"Compartiment {selectedRefillCompartmentIndex + 1} is bijgevuld met {refillAmount} {compartments[selectedRefillCompartmentIndex]!.MedicijnNaam}", 
+                "bg-success");
+            
+            ShowStatus();
+        }
+        else
+        {
+            ShowAlert("Fout", "Dit compartiment is niet geconfigureerd", "bg-danger");
+        }
+    }
+
+    private void EmergencyUnlock()
+    {
+        // Unlock all compartments
+        for (int i = 0; i < compartments.Count; i++)
+        {
+            if (compartments[i] != null)
+            {
+                compartments[i]!.ZetStatus(CompartimentStatus.Open);
+                OpenCompartmentGpio(i);
+            }
+        }
+        
+        ShowAlert("Noodontgrendeling", "Alle compartimenten zijn geopend", "bg-warning");
+        ShowStatus();
+    }
+
+    private void ShowAlert(string title, string message, string headerClass)
+    {
+        alertTitle = title;
+        alertMessage = message;
+        alertHeaderClass = headerClass;
+        showAlert = true;
+        StateHasChanged();
+    }
+
+    private void CloseAlert()
+    {
+        showAlert = false;
+        StateHasChanged();
+    }
+
+    private void HideAllPages()
+    {
+        showMenuPage = false;
+        showStatusPage = false;
+        showLogsPage = false;
+        showConfigurePage = false;
+        showRefillPage = false;
+        showMedicationReminderPage = false;
+    }
+
+    public void Dispose()
+    {
+        // Stop alle timers
+        checkMedicationsTimer?.Stop();
+        checkMedicationsTimer?.Dispose();
+        
+        // Stop LED knipperen
+        StopLedBlink();
+        ledBlinkTimer?.Dispose();
+        
+        // Sluit alle GPIO pins en maak resources vrij
+        if (gpio != null)
+        {
+            try
+            {
+                // Zorg dat alle pins dicht zijn
+                if (gpio.IsPinOpen(LED_PIN))
+                {
+                    gpio.Write(LED_PIN, PinValue.Low);
+                    gpio.ClosePin(LED_PIN);
+                    Console.WriteLine($"LED pin {LED_PIN} gesloten");
+                }
+                
+                foreach (var pinPair in compartmentPins)
+                {
+                    int pin = pinPair.Value;
+                    if (gpio.IsPinOpen(pin))
+                    {
+                        gpio.Write(pin, PinValue.Low);
+                        gpio.ClosePin(pin);
+                        Console.WriteLine($"Compartiment pin {pin} gesloten");
+                    }
+                }
+                
+                gpio.Dispose();
+                Console.WriteLine("GPIO controller opgeruimd");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Fout bij opruimen GPIO resources: {ex.Message}");
+            }
+        }
+    }
+}

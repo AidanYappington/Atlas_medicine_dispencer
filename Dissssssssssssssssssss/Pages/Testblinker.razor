@@ -1,0 +1,138 @@
+@page "/led-controller"
+@using System.Device.Gpio
+@using System.Timers
+@implements IDisposable
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2>Raspberry Pi 5 LED Controller</h2>
+        </div>
+        <div class="card-body text-center">
+            <h3 class="mb-4">LED Status: <span class="@statusClass">@statusText</span></h3>
+            
+            <button class="btn @btnClass btn-lg" @onclick="ToggleLed">
+                @(isBlinking ? "Stop LED Knipperen" : "Start LED Knipperen")
+            </button>
+            
+            @if (errorMessage != null)
+            {
+                <div class="alert alert-danger mt-4">
+                    <h4>Foutmelding:</h4>
+                    <p>@errorMessage</p>
+                </div>
+            }
+        </div>
+        <div class="card-footer">
+            <p><strong>GPIO Pin:</strong> 14 (Fysieke pin 8)</p>
+        </div>
+    </div>
+</div>
+
+@code {
+    // GPIO configuratie
+    private const int LED_PIN = 14; // GPIO 14 op fysieke pin 8
+    private GpioController? gpio;
+    private Timer? blinkTimer;
+    private bool ledState = false;
+    private bool isBlinking = false;
+    
+    // UI-status
+    private string statusText => isBlinking ? "Knipperend" : "Uit";
+    private string statusClass => isBlinking ? "text-success" : "text-danger";
+    private string btnClass => isBlinking ? "btn-danger" : "btn-success";
+    private string? errorMessage;
+    
+    protected override void OnInitialized()
+    {
+        try
+        {
+            // Initialiseer GPIO controller
+            gpio = new GpioController();
+            gpio.OpenPin(LED_PIN, PinMode.Output);
+            gpio.Write(LED_PIN, PinValue.Low); // Start met LED uit
+            
+            // Maak blink timer aan (maar start deze nog niet)
+            blinkTimer = new Timer(500); // 0.5 seconde interval
+            blinkTimer.Elapsed += BlinkTimerElapsed;
+            blinkTimer.AutoReset = true;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"GPIO initialisatie mislukt: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+    
+    private void BlinkTimerElapsed(object? sender, ElapsedEventArgs e)
+    {
+        try
+        {
+            if (gpio != null && gpio.IsPinOpen(LED_PIN))
+            {
+                // Wissel de LED-status
+                ledState = !ledState;
+                gpio.Write(LED_PIN, ledState ? PinValue.High : PinValue.Low);
+                
+                // We moeten StateHasChanged aanroepen omdat deze event buiten de UI thread loopt
+                InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Fout bij LED bediening: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+    
+    private void ToggleLed()
+    {
+        try
+        {
+            if (blinkTimer == null || gpio == null)
+            {
+                errorMessage = "GPIO of timer niet geïnitialiseerd";
+                return;
+            }
+            
+            if (isBlinking)
+            {
+                // Stop knipperen
+                blinkTimer.Stop();
+                gpio.Write(LED_PIN, PinValue.Low); // Zorg dat de LED uit is
+                ledState = false;
+            }
+            else
+            {
+                // Start knipperen
+                blinkTimer.Start();
+            }
+            
+            isBlinking = !isBlinking;
+            errorMessage = null; // Reset eventuele eerdere fouten
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Fout bij toggling LED: {ex.Message}";
+            Console.WriteLine(errorMessage);
+        }
+    }
+    
+    public void Dispose()
+    {
+        // Clean-up resources
+        blinkTimer?.Stop();
+        blinkTimer?.Dispose();
+        
+        if (gpio != null)
+        {
+            if (gpio.IsPinOpen(LED_PIN))
+            {
+                gpio.Write(LED_PIN, PinValue.Low); // Zet LED uit
+                gpio.ClosePin(LED_PIN);
+            }
+            
+            gpio.Dispose();
+        }
+    }
+}
