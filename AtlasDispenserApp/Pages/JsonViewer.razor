@@ -1,6 +1,7 @@
 @page "/jsonviewer"
 @using System.Text.Json
 @using System.IO
+@inject AtlasDispenserApp.Data.AppDbContext DbContext
 
 <h1>JSON Bestand Viewer</h1>
 
@@ -32,45 +33,67 @@
     </div>
 }
 
+@if (!string.IsNullOrEmpty(successMessage))
+{
+    <div class="alert alert-success mt-3">
+        @successMessage
+    </div>
+}
+
 @code {
     private string jsonContent = string.Empty;
     private string formattedJson = string.Empty;
     private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
 
     private async Task LoadFile(InputFileChangeEventArgs e)
     {
         try
         {
             errorMessage = string.Empty;
-            
-            if (e.File.ContentType != "application/json" && !e.File.Name.EndsWith(".json"))
+            successMessage = string.Empty;
+
+            var file = e.File;
+
+            if (file.ContentType != "application/json" && !file.Name.EndsWith(".json"))
             {
                 errorMessage = "Alleen JSON bestanden worden ondersteund.";
                 return;
             }
 
-            using var stream = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB max
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB max
             using var reader = new StreamReader(stream);
             jsonContent = await reader.ReadToEndAsync();
 
-            // Format JSON voor weergave
             try
             {
                 using var document = JsonDocument.Parse(jsonContent);
-                formattedJson = JsonSerializer.Serialize(document, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true 
+                formattedJson = JsonSerializer.Serialize(document, new JsonSerializerOptions
+                {
+                    WriteIndented = true
                 });
             }
             catch
             {
-                // Als we het niet kunnen formatteren, toon dan de ruwe inhoud
                 formattedJson = jsonContent;
             }
+
+            // Save to database
+            var jsonFile = new AtlasDispenserApp.Models.JsonFile
+            {
+                FileName = file.Name,
+                Content = jsonContent,
+                UploadedAt = DateTime.UtcNow
+            };
+
+            DbContext.JsonFiles.Add(jsonFile);
+            await DbContext.SaveChangesAsync();
+
+            successMessage = "JSON bestand succesvol opgeslagen in de database.";
         }
         catch (Exception ex)
         {
-            errorMessage = $"Fout bij het inlezen van bestand: {ex.Message}";
+            errorMessage = $"Fout bij het verwerken van het bestand: {ex.Message}";
             jsonContent = string.Empty;
             formattedJson = string.Empty;
         }
@@ -81,6 +104,7 @@
         jsonContent = string.Empty;
         formattedJson = string.Empty;
         errorMessage = string.Empty;
+        successMessage = string.Empty;
     }
 }
 

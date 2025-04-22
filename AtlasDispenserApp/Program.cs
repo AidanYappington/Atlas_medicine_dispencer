@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.EntityFrameworkCore; // Needed for UseNpgsql
 using AtlasDispenserApp.Data;
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.

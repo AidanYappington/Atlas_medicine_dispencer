@@ -1,8 +1,15 @@
 using Microsoft.EntityFrameworkCore;
+using AtlasDispenserApp.Models; // 👈 Needed for JsonFile
 
-public class AppDbContext : DbContext
+namespace AtlasDispenserApp.Data
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) {}
+    public class AppDbContext  : DbContext
+    {
+        public AppDbContext (DbContextOptions<AppDbContext > options)
+            : base(options)
+        {
+        }
 
-    public DbSet<JsonFile> JsonFiles { get; set; }
+    public DbSet<JsonFile> JsonFiles { get; set; } // Ensure this is here
+    }
 }
