@@ -4,9 +4,9 @@
 @inject AtlasDispenserApp.Data.AppDbContext DbContext
 @using AtlasDispenserApp.Models
 
-
 <h1>JSON Bestand Viewer</h1>
 
+<!-- File upload input and clear button -->
 <div class="row mb-3">
     <div class="col-md-6">
         <InputFile OnChange="@LoadFile" class="form-control" />
@@ -16,6 +16,7 @@
     </div>
 </div>
 
+<!-- Display error message if something went wrong -->
 @if (!string.IsNullOrEmpty(errorMessage))
 {
     <div class="alert alert-danger">
@@ -23,6 +24,7 @@
     </div>
 }
 
+<!-- Display formatted JSON content -->
 @if (!string.IsNullOrEmpty(jsonContent))
 {
     <div class="card">
@@ -35,6 +37,7 @@
     </div>
 }
 
+<!-- Display success message after saving -->
 @if (!string.IsNullOrEmpty(successMessage))
 {
     <div class="alert alert-success mt-3">
@@ -48,6 +51,7 @@
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
 
+    // Triggered when a file is uploaded
     private async Task LoadFile(InputFileChangeEventArgs e)
     {
         try
@@ -57,16 +61,19 @@
 
             var file = e.File;
 
+            // Check if the uploaded file is a JSON file
             if (file.ContentType != "application/json" && !file.Name.EndsWith(".json"))
             {
                 errorMessage = "Alleen JSON bestanden worden ondersteund.";
                 return;
             }
 
-            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB max
+            // Read file content (max 5MB)
+            using var stream = file.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024);
             using var reader = new StreamReader(stream);
             jsonContent = await reader.ReadToEndAsync();
 
+            // Try formatting the JSON with indentation
             try
             {
                 using var document = JsonDocument.Parse(jsonContent);
@@ -77,15 +84,17 @@
             }
             catch
             {
+                // Fallback to raw content if formatting fails
                 formattedJson = jsonContent;
             }
 
-            // Deserialize the JSON into MedicineFile
+            // Deserialize JSON into MedicineFile model
             var medicineFile = JsonSerializer.Deserialize<MedicineFile>(jsonContent, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
 
+            // Check if required fields are present
             if (medicineFile == null)
             {
                 errorMessage = "JSON bevat geen geldige medicijn gegevens.";
@@ -102,7 +111,7 @@
                 return;
             }
 
-            // Save to database as MedicineFile
+            // Save the valid JSON content and parsed data to the database
             var medicineFileToSave = new AtlasDispenserApp.Models.MedicineFile
             {
                 FileName = file.Name,
@@ -122,12 +131,14 @@
         }
         catch (Exception ex)
         {
+            // Handle unexpected exceptions
             errorMessage = $"Fout bij het verwerken van het bestand: {ex.Message}";
             jsonContent = string.Empty;
             formattedJson = string.Empty;
         }
     }
 
+    // Clears current JSON content and messages
     private void ClearJson()
     {
         jsonContent = string.Empty;

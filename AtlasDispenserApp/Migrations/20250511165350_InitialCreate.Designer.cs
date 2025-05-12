@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AtlasDispenserApp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250422014741_CreateJsonFilesTable")]
-    partial class CreateJsonFilesTable
+    [Migration("20250511165350_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,7 @@ namespace AtlasDispenserApp.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("AtlasDispenserApp.Models.JsonFile", b =>
+            modelBuilder.Entity("AtlasDispenserApp.Models.MedicineFile", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -33,7 +33,14 @@ namespace AtlasDispenserApp.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("AmountPerDose")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -41,12 +48,22 @@ namespace AtlasDispenserApp.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("IntervalHours")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("TotalAmount")
+                        .HasColumnType("integer");
+
                     b.Property<DateTime>("UploadedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.ToTable("JsonFiles");
+                    b.ToTable("MedicineFiles");
                 });
 #pragma warning restore 612, 618
         }
