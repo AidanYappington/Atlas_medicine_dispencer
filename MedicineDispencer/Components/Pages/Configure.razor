@@ -2,6 +2,7 @@
 @using System
 @using System.Collections.Generic
 @inject IJSRuntime JSRuntime
+@inject CompartmentsData CompartmentsData
 
 <div class="container">
     <div class="card mb-4">
@@ -12,60 +13,62 @@
             <div class="mb-3">
                 <label for="compartment-select" class="form-label">Compartiment:</label>
                 <select id="compartment-select" class="form-select" @bind="selectedCompartmentIndex">
-                    @for (int i = 0; i < compartments.Count; i++)
+                    @for (int i = 0; i < compartiments.Length; i++)
                     {
                         <option value="@i">Compartiment @(i + 1)</option>
                     }
                 </select>
             </div>
-            
-            <div class="mb-3">
-                <label for="medication-name" class="form-label">Medicijn naam:</label>
-                <input id="medication-name" type="text" class="form-control" @bind="configMedicationName" />
+
+            <div @key="selectedCompartmentIndex">
+                <div class="mb-3">
+                    <label for="medication-name" class="form-label">Medicijn naam:</label>
+                    <input id="medication-name" type="text" class="form-control" @bind="configMedicationName" />
+                </div>
+                <div class="mb-3">
+                    <label for="medication-dosage" class="form-label">Dosering:</label>
+                    <input id="medication-dosage" type="text" class="form-control" @bind="configMedicationDosage" />
+                </div>
             </div>
-            
-            <div class="mb-3">
-                <label for="medication-dosage" class="form-label">Dosering:</label>
-                <input id="medication-dosage" type="text" class="form-control" @bind="configMedicationDosage" />
-            </div>
-            
+
             <div class="mb-3">
                 <label class="form-label">Doseringstijden:</label>
-                
+
                 @foreach (var time in configDosingTimes)
                 {
                     var index = configDosingTimes.IndexOf(time);
                     <div class="input-group mb-2">
-                        <input type="time" class="form-control" value="@time.ToString(@"hh\:mm")" 
+                        <input type="time" class="form-control" value="@time.ToString(@"hh\:mm")"
                             @onchange="@(e => UpdateDosingTime(index, e.Value?.ToString()))" />
                         <button class="btn btn-outline-danger" @onclick="() => RemoveDosingTime(index)">
                             Verwijder
                         </button>
                     </div>
                 }
-                
+
                 <button class="btn btn-outline-primary" @onclick="AddDosingTime">
                     Tijdstip toevoegen
                 </button>
             </div>
-            
+
             <div class="mb-3">
                 <label for="medication-stock" class="form-label">Beginvoorraad:</label>
                 <input id="medication-stock" type="number" class="form-control" @bind="configMedicationStock" min="0" />
             </div>
-            
+
             <button class="btn btn-primary" @onclick="SaveCompartmentConfig">Opslaan</button>
         </div>
     </div>
 </div>
 
 @code {
+    private MedicijnCompartiment?[] compartiments => CompartmentsData.compartments;
     private int selectedCompartmentIndex = 0;
     private string configMedicationName = "";
     private string configMedicationDosage = "";
+
     private List<TimeSpan> configDosingTimes = new List<TimeSpan>();
     private int configMedicationStock = 0;
-    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
     private void AddDosingTime()
     {
         configDosingTimes.Add(new TimeSpan(8, 0, 0)); // Default: 8:00
@@ -93,22 +96,13 @@
 
     private void SaveCompartmentConfig()
     {
-        if (string.IsNullOrWhiteSpace(configMedicationName) || 
-            string.IsNullOrWhiteSpace(configMedicationDosage))
+        if (string.IsNullOrWhiteSpace(configMedicationName) ||
+        string.IsNullOrWhiteSpace(configMedicationDosage))
         {
             // Show error message
             return;
         }
-        
-        // Save configuration logic
-    }
 
-    class MedicijnCompartiment
-    {
-        public string MedicijnNaam { get; private set; }
-        public MedicijnCompartiment(string medicijnNaam)
-        {
-            MedicijnNaam = medicijnNaam;
-        }
+        // Save configuration logic
     }
 }
