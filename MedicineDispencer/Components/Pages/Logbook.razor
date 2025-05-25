@@ -1,0 +1,69 @@
+@page "/Logbook"
+@using System
+@using System.Collections.Generic
+
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Medicijn Inname Log</h3>
+        </div>
+        <div class="card-body">
+            @if (innameLogs.Count == 0)
+            {
+                <div class="alert alert-info">Geen medicijnen ingenomen.</div>
+            }
+            else
+            {
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tijd</th>
+                            <th>Compartiment</th>
+                            <th>Medicijn</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in innameLogs)
+                        {
+                            string medicijnNaam = compartments[log.compartimentNr] != null 
+                                ? compartments[log.compartimentNr].MedicijnNaam 
+                                : "Onbekend";
+                            
+                            <tr>
+                                <td>@log.tijdstip.ToString("dd-MM-yyyy HH:mm")</td>
+                                <td>@(log.compartimentNr + 1)</td>
+                                <td>@medicijnNaam</td>
+                                <td>
+                                    @if (log.genomen)
+                                    {
+                                        <span class="badge bg-success">Genomen</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Gemist</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool showLogsPage = true;
+    private List<(int compartimentNr, DateTime tijdstip, bool genomen)> innameLogs = new List<(int, DateTime, bool)>();
+    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
+
+    class MedicijnCompartiment
+    {
+        public string MedicijnNaam { get; private set; }
+        public MedicijnCompartiment(string medicijnNaam)
+        {
+            MedicijnNaam = medicijnNaam;
+        }
+    }
+}
