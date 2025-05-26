@@ -1,27 +1,59 @@
 @inject NotificationService NotificationService
 @rendermode InteractiveServer
 
-@if (!string.IsNullOrEmpty(notification))
+@if (ActiveCompartment != null)
 {
-    <div class="alert alert-info">@notification</div>
+    <div class="card mb-4 reminder-alert">
+        <div class="card-header bg-danger text-white">
+            <h3 class="mb-0">MEDICIJN HERINNERING</h3>
+        </div>
+        <div class="card-body text-center">
+            <h2 class="mb-3">Het is tijd om uw medicijn te nemen:</h2>
+
+            <div class="medication-info my-4">
+                <h3 class="text-primary">@ActiveCompartment.MedicijnNaam</h3>
+                <p class="lead">@ActiveCompartment.Dosis</p>
+                <p class="mb-4">Compartiment @(CompartmentIndex + 1)</p>
+                <div class="alert alert-success">
+                    <p>Het compartiment is nu open.</p>
+                </div>
+            </div>
+
+            <button class="btn btn-success btn-lg mb-2" @onclick="TakeMedication">
+                Ik heb mijn medicijn genomen
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="DismissReminder">
+                Later Herinneren
+            </button>
+        </div>
+    </div>
 }
 
 @code {
-    private string? notification;
+    private MedicijnCompartiment? ActiveCompartment;
+    private int CompartmentIndex;
 
     protected override void OnInitialized()
     {
         NotificationService.OnNotification += ShowNotification;
     }
 
-    private void ShowNotification(string msg)
+    private void ShowNotification(int compartmentIndex, MedicijnCompartiment compartment)
     {
-        notification = msg;
+        ActiveCompartment = compartment;
+        CompartmentIndex = compartmentIndex;
         InvokeAsync(StateHasChanged);
     }
 
-    public void Dispose()
+    public void TakeMedication()
     {
         NotificationService.OnNotification -= ShowNotification;
+        ActiveCompartment = null;
+    }
+
+    public void DismissReminder()
+    {
+        NotificationService.OnNotification -= ShowNotification;
+        ActiveCompartment = null;
     }
 }

@@ -4,7 +4,7 @@ public class NotificationService : IDisposable
 {
     private readonly CompartmentsData _compartmentsData;
     private readonly System.Timers.Timer _timer;
-    public event Action<string>? OnNotification;
+    public event Action<int, MedicijnCompartiment>? OnNotification;
 
     public NotificationService(CompartmentsData compartmentsData)
     {
@@ -17,14 +17,15 @@ public class NotificationService : IDisposable
     private void CheckDosingTimes(object? sender, ElapsedEventArgs e)
     {
         var now = DateTime.Now;
-        foreach (var comp in _compartmentsData.compartments)
+        for (int i = 0; i < _compartmentsData.compartments.Length; i++)
         {
-            if (comp == null) continue;
-            foreach (var tijd in comp.DoseringstijdenPerDag)
+            if (_compartmentsData.compartments[i] == null) continue;
+            foreach (var tijd in _compartmentsData.compartments[i].DoseringstijdenPerDag)
             {
                 if (Math.Abs((now.TimeOfDay - tijd).TotalMinutes) < 1)
                 {
-                    OnNotification?.Invoke($"Tijd voor {comp.MedicijnNaam} in compartiment!");
+                    OnNotification?.Invoke(i, _compartmentsData.compartments[i]);
+                    break;
                 }
             }
         }
