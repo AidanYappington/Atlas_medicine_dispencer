@@ -4,36 +4,22 @@ public class MedicijnCompartiment
 {
     public string MedicijnNaam { get; private set; }
     public string Dosis { get; private set; }
-    public int CompartimentNummer { get; private set; }
     public CompartimentStatus Status { get; private set; }
     public int Voorraad { get; private set; }
-    public List<TimeSpan> DoseringstijdenPerDag { get; private set; } = new List<TimeSpan>();
+    public List<TimeSpan> DoseringstijdenPerDag { get; private set; }
     public DateTime? LaatsteOpeningTijd { get; private set; }
 
-    public MedicijnCompartiment(int nummer, string medicijnNaam, string dosis)
+    public MedicijnCompartiment(string medicijnNaam, string dosis, int voorraad, List<TimeSpan> doseringstijden)
     {
-        CompartimentNummer = nummer;
         MedicijnNaam = medicijnNaam;
         Dosis = dosis;
         Status = CompartimentStatus.Vergrendeld;
-        Voorraad = 0;
+        Voorraad = voorraad;
+        DoseringstijdenPerDag = doseringstijden;
     }
 
     public void VoegDoseringstijdToe(int uur, int minuut) =>
         DoseringstijdenPerDag.Add(new TimeSpan(uur, minuut, 0));
-
-    public bool IsHetTijdVoorDosering(DateTime nu)
-    {
-        TimeSpan huidigeTijd = nu.TimeOfDay;
-
-        foreach (TimeSpan tijd in DoseringstijdenPerDag)
-        {
-            if (Math.Abs((huidigeTijd - tijd).TotalMinutes) <= 5)
-                return true;
-        }
-
-        return false;
-    }
 
     public void VulVoorraadBij(int aantal) => Voorraad += aantal;
 

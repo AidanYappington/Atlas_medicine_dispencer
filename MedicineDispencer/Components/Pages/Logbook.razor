@@ -26,10 +26,10 @@
                     <tbody>
                         @foreach (var log in innameLogs)
                         {
-                            string medicijnNaam = compartments[log.compartimentNr] != null 
-                                ? compartments[log.compartimentNr].MedicijnNaam 
-                                : "Onbekend";
-                            
+                            string medicijnNaam = compartments[log.compartimentNr] != null
+                            ? compartments[log.compartimentNr].MedicijnNaam
+                            : "Onbekend";
+
                             <tr>
                                 <td>@log.tijdstip.ToString("dd-MM-yyyy HH:mm")</td>
                                 <td>@(log.compartimentNr + 1)</td>

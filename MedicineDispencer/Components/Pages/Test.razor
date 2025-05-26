@@ -46,7 +46,8 @@
                     var isActive = pinStates.ContainsKey(pinNumber) && pinStates[pinNumber];
 
                     <div class="d-flex mt-2 align-items-center">
-                        <button class="btn @(isActive ? "btn-danger" : "btn-success") me-2" @onclick="() => TogglePin(pinNumber)">
+                        <button class="btn @(isActive ? "btn-danger" : "btn-success") me-2"
+                            @onclick="() => TogglePin(pinNumber)">
                             @(isActive ? "Sluiten" : "Openen") Compartiment @compartmentNumber (Pin @pinNumber)
                         </button>
                         <div class="status-indicator @(isActive ? "bg-success" : "bg-secondary")"></div>
@@ -57,7 +58,8 @@
             <div class="mb-4">
                 <h4>Test Custom Pin</h4>
                 <div class="input-group mb-2">
-                    <input type="number" class="form-control" @bind="customPinNumber" min="0" max="40" placeholder="Voer pin nummer in" />
+                    <input type="number" class="form-control" @bind="customPinNumber" min="0" max="40"
+                        placeholder="Voer pin nummer in" />
                     <button class="btn btn-primary" @onclick="ToggleCustomPin">
                         Schakel Pin @customPinNumber
                     </button>
@@ -127,19 +129,19 @@
     // Pin nummers
     private const int LED_PIN = 26;
     private Dictionary<int, int> compartmentPins = new Dictionary<int, int>
-    {
-        { 0, 14 },  // Compartiment 1 -> GPIO 14
-        { 1, 6 },   // Compartiment 2 -> GPIO 6
-        { 2, 13 },  // Compartiment 3 -> GPIO 13
-        { 3, 19 }   // Compartiment 4 -> GPIO 19
-    };
+{
+{ 0, 14 }, // Compartiment 1 -> GPIO 14
+{ 1, 6 }, // Compartiment 2 -> GPIO 6
+{ 2, 13 }, // Compartiment 3 -> GPIO 13
+{ 3, 19 } // Compartiment 4 -> GPIO 19
+};
 
     // Pin staten
     private bool pin14State = false;
     private bool ledState = false;
     private bool ledBlinkActive = false;
     private Dictionary<int, bool> pinStates = new Dictionary<int, bool>();
-    
+
     // Custom pin
     private int customPinNumber = 0;
     private bool customPinActive = false;
@@ -161,18 +163,18 @@
         try
         {
             gpio = new GpioController();
-            
+
             // Initialiseer LED pin
             gpio.OpenPin(LED_PIN, PinMode.Output);
             gpio.Write(LED_PIN, PinValue.Low);
             AddLogMessage($"LED pin {LED_PIN} geïnitialiseerd");
-            
+
             // Initialiseer compartiment pins
             foreach (var kvp in compartmentPins)
             {
                 int index = kvp.Key;
                 int pin = kvp.Value;
-                
+
                 gpio.OpenPin(pin, PinMode.Output);
                 gpio.Write(pin, PinValue.Low);
                 pinStates[pin] = false;
@@ -213,7 +215,7 @@
         try
         {
             ledBlinkActive = !ledBlinkActive;
-            
+
             if (ledBlinkActive)
             {
                 // Start LED knipperen
@@ -225,13 +227,13 @@
                 // Stop LED knipperen
                 ledBlinkTimer?.Dispose();
                 ledBlinkTimer = null;
-                
+
                 if (gpio != null && gpio.IsPinOpen(LED_PIN))
                 {
                     gpio.Write(LED_PIN, PinValue.Low);
                     ledState = false;
                 }
-                
+
                 AddLogMessage($"LED knipperen gestopt op pin {LED_PIN}");
             }
         }
@@ -249,7 +251,7 @@
             {
                 ledState = !ledState;
                 gpio.Write(LED_PIN, ledState ? PinValue.High : PinValue.Low);
-                
+
                 InvokeAsync(StateHasChanged);
             }
         }
@@ -268,9 +270,9 @@
             {
                 bool newState = !pinStates.GetValueOrDefault(pinNumber, false);
                 pinStates[pinNumber] = newState;
-                
+
                 gpio.Write(pinNumber, newState ? PinValue.High : PinValue.Low);
-                
+
                 // Vind compartiment nummer (index + 1)
                 int compartmentNumber = -1;
                 foreach (var kvp in compartmentPins)
@@ -281,7 +283,7 @@
                         break;
                     }
                 }
-                
+
                 if (compartmentNumber > 0)
                 {
                     AddLogMessage($"Compartiment {compartmentNumber} (Pin {pinNumber}) geschakeld naar: {(newState ? "AAN" : "UIT")}");
@@ -311,7 +313,7 @@
                 AddLogMessage($"Ongeldige pin nummer: {customPinNumber}");
                 return;
             }
-            
+
             if (gpio != null)
             {
                 if (!gpio.IsPinOpen(customPinNumber))
@@ -319,7 +321,7 @@
                     gpio.OpenPin(customPinNumber, PinMode.Output);
                     AddLogMessage($"Custom pin {customPinNumber} geopend");
                 }
-                
+
                 customPinActive = !customPinActive;
                 gpio.Write(customPinNumber, customPinActive ? PinValue.High : PinValue.Low);
                 AddLogMessage($"Custom pin {customPinNumber} geschakeld naar: {(customPinActive ? "AAN" : "UIT")}");
@@ -355,7 +357,7 @@
     {
         // Stop LED knipperen als het actief is
         ledBlinkTimer?.Dispose();
-        
+
         // Zet alle pins op LOW
         if (gpio != null)
         {
@@ -373,7 +375,7 @@
                     }
                 }
             }
-            
+
             if (gpio.IsPinOpen(LED_PIN))
             {
                 try

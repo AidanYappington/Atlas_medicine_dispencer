@@ -1,5 +1,4 @@
 using MedicineDispencer.Components;
-using System.Timers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +8,7 @@ builder.Services.AddRazorComponents()
 
 // Register Compartments as a singleton
 builder.Services.AddSingleton<CompartmentsData>();
+builder.Services.AddSingleton<NotificationService>();
 
 var app = builder.Build();
 

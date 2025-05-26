@@ -1,0 +1,27 @@
+@inject NotificationService NotificationService
+@rendermode InteractiveServer
+
+@if (!string.IsNullOrEmpty(notification))
+{
+    <div class="alert alert-info">@notification</div>
+}
+
+@code {
+    private string? notification;
+
+    protected override void OnInitialized()
+    {
+        NotificationService.OnNotification += ShowNotification;
+    }
+
+    private void ShowNotification(string msg)
+    {
+        notification = msg;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnNotification -= ShowNotification;
+    }
+}
