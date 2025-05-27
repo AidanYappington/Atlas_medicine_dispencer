@@ -9,6 +9,7 @@ builder.Services.AddRazorComponents()
 // Register Compartments as a singleton
 builder.Services.AddSingleton<CompartmentsData>();
 builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddSingleton<LogService>();
 
 var app = builder.Build();
 

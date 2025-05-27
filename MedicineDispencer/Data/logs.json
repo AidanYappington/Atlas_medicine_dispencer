@@ -1,0 +1,20 @@
+[
+  {
+    "Timestamp": "2025-05-27T20:03:35.9391323+02:00",
+    "MedicationName": "Paracetamol",
+    "Dose": "20g",
+    "Compartment": 1
+  },
+  {
+    "Timestamp": "2025-05-27T20:03:35.9451096+02:00",
+    "MedicationName": "Paracetamol",
+    "Dose": "20g",
+    "Compartment": 1
+  },
+  {
+    "Timestamp": "2025-05-27T20:03:35.9547766+02:00",
+    "MedicationName": "Paracetamol",
+    "Dose": "20g",
+    "Compartment": 1
+  }
+]
