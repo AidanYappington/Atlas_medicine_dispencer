@@ -12,20 +12,23 @@ public static class LEDService
 
     static LEDService()
     {
-        try
-        {
-            Console.WriteLine("Initializing LED Service...");
-            gpioController = new GpioController();
-            gpioController.OpenPin(LEDPIN, PinMode.Output);
-            gpioController.Write(LEDPIN, PinValue.Low);
-            initialized = true;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"LEDService initialization failed: {ex.Message}");
-            simulate = true;
-            initialized = false;
-        }
+        // try
+        // {
+        //     Console.WriteLine("Initializing LED Service...");
+        //     gpioController = new GpioController();
+        //     gpioController.OpenPin(LEDPIN, PinMode.Output);
+        //     gpioController.Write(LEDPIN, PinValue.Low);
+        //     initialized = true;
+        // }
+        // catch (Exception ex)
+        // {
+        //     Console.WriteLine($"LEDService initialization failed: {ex.Message}");
+        //     simulate = true;
+        //     initialized = false;
+        // }
+        Console.WriteLine("Forcing LEDService to simulate mode.");
+        simulate = true;
+        initialized = false;
     }
 
     public static void TurnOn()

@@ -5,7 +5,8 @@ public class NotificationService
     private readonly CompartmentsData _compartmentsData;
     private readonly System.Timers.Timer _timer;
     private bool notify = false;
-    private List<(int, MedicijnCompartiment)> dueCompartments = [];
+    public List<(int, MedicijnCompartiment)> dueCompartments = [];
+    public bool IsNotificationActive = false;
     public Action<List<(int, MedicijnCompartiment)>>? OnNotification;
 
 
@@ -21,6 +22,8 @@ public class NotificationService
 
     public void TriggerManualReminder(int index, MedicijnCompartiment compartment)
     {
+        IsNotificationActive = true;
+        LEDService.TurnOn();
         dueCompartments.Add((index +1, compartment));
         OnNotification?.Invoke(dueCompartments);
     }
@@ -51,6 +54,7 @@ public class NotificationService
         {
             LEDService.TurnOn();
             notify = false;
+            IsNotificationActive = true;
             OnNotification?.Invoke(dueCompartments);
             lastDismissedAt = null;
             return;
@@ -61,6 +65,7 @@ public class NotificationService
     public void DismissReminder()
     {
         LEDService.TurnOff();
+        IsNotificationActive = false;
         lastDismissedAt = DateTime.Now;
     }
 
@@ -69,6 +74,7 @@ public class NotificationService
     {
         LEDService.TurnOff();
         lastDismissedAt = null;
+        IsNotificationActive = false;
         dueCompartments.Clear();
     }
 }

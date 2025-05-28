@@ -3,7 +3,7 @@
 
 @rendermode InteractiveServer
 
-@if (dueCompartments != null)
+@if (show)
 {
     <div class="modal show d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -38,7 +38,7 @@
 }
 
 @code {
-    private List<(int, MedicijnCompartiment)>? dueCompartments;
+    private List<(int, MedicijnCompartiment)>? dueCompartments => NotificationService.dueCompartments;
     // Group and count for display and logging
     private IEnumerable<(int CompartmentIndex, MedicijnCompartiment Compartment, int Amount)> GroupedDueCompartments =>
         dueCompartments?
@@ -47,6 +47,8 @@
             ?? Enumerable.Empty<(int, MedicijnCompartiment, int)>();
 
 
+    private bool show => NotificationService.IsNotificationActive;
+
     protected override void OnInitialized()
     {
         NotificationService.OnNotification = ShowNotification;
@@ -54,7 +56,8 @@
 
     private void ShowNotification(List<(int, MedicijnCompartiment)> compartments)
     {
-        dueCompartments = compartments;
+        Console.WriteLine("Notification received");
+        Console.WriteLine($"Due Compartments Count: {dueCompartments.Count}");
         InvokeAsync(StateHasChanged);
     }
 
@@ -79,11 +82,9 @@
         }
 
         NotificationService.ClearReminders();
-        dueCompartments = null;
     }
     public void DismissReminder()
     {
         NotificationService.DismissReminder();
-        dueCompartments = null;
     }
 }
