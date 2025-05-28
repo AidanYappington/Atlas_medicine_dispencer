@@ -14,7 +14,7 @@ public class NotificationService
     public NotificationService(CompartmentsData compartmentsData)
     {
         _compartmentsData = compartmentsData;
-        _timer = new System.Timers.Timer(10_000); // Check every minute
+        _timer = new System.Timers.Timer(60_000); // Check every minute
         _timer.Elapsed += CheckDosingTimes;
         _timer.Start();
     }

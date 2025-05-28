@@ -1,6 +1,8 @@
 @page "/Scanner"
+@rendermode InteractiveServer
 @using System.Text.Json
 @using System.IO
+
 
 <h1>JSON Bestand Viewer</h1>
 
@@ -83,14 +85,3 @@
         errorMessage = string.Empty;
     }
 }
-
-<style>
-    .json-content {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 5px;
-        overflow-x: auto;
-        white-space: pre-wrap;
-        font-family: monospace;
-    }
-</style>
