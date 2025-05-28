@@ -37,7 +37,7 @@ public static class LEDService
             Console.WriteLine("Simulated LED ON");
             return;
         }
-        if (!initialized) return;
+        if (!initialized || ledState) return;
         gpioController!.Write(LEDPIN, PinValue.High);
     }
 
@@ -50,7 +50,7 @@ public static class LEDService
             Console.WriteLine("Simulated LED OFF");
             return;
         }
-        if (!initialized) return;
+        if (!initialized || !ledState) return;
         gpioController!.Write(LEDPIN, PinValue.Low);
     }
 }

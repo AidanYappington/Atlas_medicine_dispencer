@@ -82,9 +82,9 @@
         NotificationService.ClearReminders();
         dueCompartments = null;
     }
-
     public void DismissReminder()
     {
+        LEDService.TurnOff();
         NotificationService.DismissReminder();
         dueCompartments = null;
     }

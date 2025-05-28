@@ -19,6 +19,11 @@ public class NotificationService
         _timer.Start();
     }
 
+    public void TriggerManualReminder(int index, MedicijnCompartiment compartment)
+    {
+        dueCompartments.Add((index +1, compartment));
+        OnNotification?.Invoke(dueCompartments);
+    }
     private void CheckDosingTimes(object? sender, ElapsedEventArgs e)
     {
         var now = DateTime.Now;

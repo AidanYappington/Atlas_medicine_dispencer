@@ -5,6 +5,7 @@
 @using System.Collections.Generic
 @inject IJSRuntime JSRuntime
 @inject CompartmentsData CompartmentsData
+@inject NotificationService NotificationService
 
 <div class="container">
     <div class="card mb-4">
@@ -79,9 +80,13 @@
     private MedicijnCompartiment?[] compartments => CompartmentsData.compartments;
 
     private void TriggerMedicijnHerinnering(int index)
+{
+    var compartment = compartments[index];
+    if (compartment != null)
     {
-        // Logic to trigger a medication reminder
+        NotificationService.TriggerManualReminder(index, compartment);
     }
+}
 
     private void ConfigureSpecificCompartment(int index)
     {
