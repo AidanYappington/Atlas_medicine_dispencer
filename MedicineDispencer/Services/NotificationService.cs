@@ -35,7 +35,6 @@ public class NotificationService
             {
                 // if (Math.Abs((now.TimeOfDay - tijd).TotalMinutes) < 1)
                 // {
-                LEDService.TurnOn();
                 dueCompartments.Add((i + 1, _compartmentsData.compartments[i]));
                 notify = true;
                 break;
@@ -50,6 +49,7 @@ public class NotificationService
 
         if (notify)
         {
+            LEDService.TurnOn();
             notify = false;
             OnNotification?.Invoke(dueCompartments);
             lastDismissedAt = null;
@@ -60,12 +60,14 @@ public class NotificationService
     // Call this when the user dismisses a reminder
     public void DismissReminder()
     {
+        LEDService.TurnOff();
         lastDismissedAt = DateTime.Now;
     }
 
     // Call this when medication is taken to clear the dismissal
     public void ClearReminders()
     {
+        LEDService.TurnOff();
         lastDismissedAt = null;
         dueCompartments.Clear();
     }
