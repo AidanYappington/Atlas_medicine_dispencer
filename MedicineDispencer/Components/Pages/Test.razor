@@ -33,17 +33,6 @@
                     <span class="ms-2">Status: @(ledState ? "AAN" : "UIT")</span>
                 </div>
             </div>
-
-            <div class="mb-4">
-                <h4>LED kinpper test</h4>
-                <div class="d-flex mt-2">
-                    <button class="btn @(ledBlinkActive ? "btn-danger" : "btn-success") me-2" @onclick="ToggleLedBlink">
-                        @(ledBlinkActive ? "Stop Knipperen" : "Start Knipperen")
-                    </button>
-                    <div class="status-indicator @(ledState ? "bg-warning" : "bg-secondary")"></div>
-                    <span class="ms-2">Status: @(ledBlinkActive ? "KNIPPEREND" : "UIT")</span>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -91,52 +80,6 @@
             LEDService.TurnOn();
             AddLogMessage($"LED ingeschakeld");
         }
-    }
-
-    private void ToggleLedBlink()
-    {
-        try
-        {
-            ledBlinkActive = !ledBlinkActive;
-
-            if (ledBlinkActive)
-            {
-                // Start LED knipperen
-                ledBlinkTimer = new System.Threading.Timer(LedBlinkCallback, null, 0, 500);
-                AddLogMessage($"LED knipperen gestart");
-            }
-            else
-            {
-                // Stop LED knipperen
-                ledBlinkTimer?.Dispose();
-                ledBlinkTimer = null;
-
-                LEDService.TurnOff(); // Zet LED uit bij stoppen
-
-                AddLogMessage($"LED knipperen gestopt");
-            }
-        }
-        catch (Exception ex)
-        {
-            AddLogMessage($"Fout bij LED knipperen: {ex.Message}");
-        }
-    }
-
-    private void LedBlinkCallback(object? state)
-    {
-        InvokeAsync(() =>
-        {
-            if (ledState)
-            {
-                LEDService.TurnOff();
-                AddLogMessage($"LED uitgeschakeld (knipperen)");
-            }
-            else
-            {
-                LEDService.TurnOn();
-                AddLogMessage($"LED ingeschakeld (knipperen)");
-            }
-        });
     }
 
     private void AddLogMessage(string message)
