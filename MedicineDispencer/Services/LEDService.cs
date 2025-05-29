@@ -34,26 +34,27 @@ public static class LEDService
     public static void TurnOn()
     {
         ledState = true;
+        if (ledState) return;
         if (simulate)
         {
-            if (ledState) return;
+
             Console.WriteLine("Simulated LED ON");
             return;
         }
-        if (!initialized || ledState) return;
+        if (!initialized) return;
         gpioController!.Write(LEDPIN, PinValue.High);
     }
 
     public static void TurnOff()
     {
+        if (!ledState) return;
         ledState = false;
         if (simulate)
         {
-            if (!ledState) return;
             Console.WriteLine("Simulated LED OFF");
             return;
         }
-        if (!initialized || !ledState) return;
+        if (!initialized) return;
         
         gpioController!.Write(LEDPIN, PinValue.Low);
     }
