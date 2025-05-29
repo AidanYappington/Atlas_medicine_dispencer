@@ -44,31 +44,25 @@ public class MedicijnCompartiment
         DateTime nu = DateTime.Now;
         TimeSpan huidigeTijd = nu.TimeOfDay;
 
-        TimeSpan? volgende = null;
-        double kortsteWachttijd = double.MaxValue;
+        // Zoek de eerstvolgende tijd die nog moet komen vandaag
+        var volgende = DoseringstijdenPerDag
+            .Where(t => t > huidigeTijd)
+            .OrderBy(t => t)
+            .FirstOrDefault();
 
-        foreach (TimeSpan tijd in DoseringstijdenPerDag)
+        DateTime volgendeDosering;
+
+        if (volgende != default)
         {
-            double wachttijdMinuten = tijd > huidigeTijd
-                ? (tijd - huidigeTijd).TotalMinutes
-                : (TimeSpan.FromHours(24) - huidigeTijd + tijd).TotalMinutes;
-
-            if (wachttijdMinuten < kortsteWachttijd)
-            {
-                kortsteWachttijd = wachttijdMinuten;
-                volgende = tijd;
-            }
+            volgendeDosering = nu.Date.Add(volgende);
+        }
+        else
+        {
+            // Geen tijd meer vandaag, pak de eerste tijd van morgen
+            volgende = DoseringstijdenPerDag.OrderBy(t => t).First();
+            volgendeDosering = nu.Date.AddDays(1).Add(volgende);
         }
 
-        if (volgende.HasValue)
-        {
-            DateTime volgendeDosering = volgende.Value > huidigeTijd
-                ? nu.Date.Add(volgende.Value)
-                : nu.Date.AddDays(1).Add(volgende.Value);
-
-            return volgendeDosering.ToString("dd-MM HH:mm");
-        }
-
-        return "Onbekend";
+        return volgendeDosering.ToString("dd-MM HH:mm");
     }
 }
