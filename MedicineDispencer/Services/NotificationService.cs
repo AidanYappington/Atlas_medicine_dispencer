@@ -36,12 +36,12 @@ public class NotificationService
             if (_compartmentsData.compartments[i] == null) continue;
             foreach (var tijd in _compartmentsData.compartments[i].DoseringstijdenPerDag)
             {
-                // if (Math.Abs((now.TimeOfDay - tijd).TotalMinutes) < 1)
-                // {
-                dueCompartments.Add((i + 1, _compartmentsData.compartments[i]));
-                notify = true;
-                break;
-                // }
+                if (Math.Abs((now.TimeOfDay - tijd).TotalMinutes) < 1)
+                {
+                    dueCompartments.Add((i + 1, _compartmentsData.compartments[i]));
+                    notify = true;
+                    break;
+                }
             }
         }
 

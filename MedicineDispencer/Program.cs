@@ -27,4 +27,5 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.Lifetime.ApplicationStopping.Register(() => LEDService.Dispose());
 app.Run();

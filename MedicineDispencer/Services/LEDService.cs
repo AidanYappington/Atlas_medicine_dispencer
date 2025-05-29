@@ -3,8 +3,8 @@ using System.Device.Gpio;
 
 public static class LEDService
 {
-    private static bool simulate = false;
-    private static bool ledState = false;
+    public static bool simulate { get; private set; } = false;
+    public static bool ledState { get; private set; } = false;
 
     private const int LEDPIN = 14;
     private static GpioController? gpioController;
@@ -55,5 +55,11 @@ public static class LEDService
         }
         if (!initialized || !ledState) return;
         gpioController!.Write(LEDPIN, PinValue.Low);
+    }
+
+    public static void Dispose()
+    {
+        // Zet alle pins op LOW
+        TurnOff();
     }
 }
