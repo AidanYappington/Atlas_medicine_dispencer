@@ -33,11 +33,10 @@ public static class LEDService
 
     public static void TurnOn()
     {
-        ledState = true;
         if (ledState) return;
+        ledState = true;
         if (simulate)
         {
-
             Console.WriteLine("Simulated LED ON");
             return;
         }
