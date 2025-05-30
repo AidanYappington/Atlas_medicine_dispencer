@@ -24,10 +24,18 @@ public class NotificationService
     {
         IsNotificationActive = true;
         LEDService.TurnOn();
-        dueCompartments.Add((index +1, compartment));
+        dueCompartments.Add((index + 1, compartment));
         OnNotification?.Invoke(dueCompartments);
+        
+        // Open servo, then close after 1 second
+        Task.Run(async () =>
+        {
+            ServoService.Open();
+            await Task.Delay(1000);
+            ServoService.Close();
+        });
     }
-    private void CheckDosingTimes(object? sender, ElapsedEventArgs e)
+    private async void CheckDosingTimes(object? sender, ElapsedEventArgs e)
     {
         var now = DateTime.Now;
 
@@ -40,6 +48,7 @@ public class NotificationService
                 {
                     dueCompartments.Add((i + 1, _compartmentsData.compartments[i]));
                     notify = true;
+                    await ServoService.Dispense(); // Dispense medication asynchronously
                     break;
                 }
             }
