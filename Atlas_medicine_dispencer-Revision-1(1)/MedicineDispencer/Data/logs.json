@@ -1,0 +1,32 @@
+[
+  {
+    "Timestamp": "2025-06-01T21:46:21.0609493+02:00",
+    "MedicationName": "Vitamine D",
+    "Dose": "20mcg",
+    "Compartment": 2
+  },
+  {
+    "Timestamp": "2025-06-01T21:48:42.7007843+02:00",
+    "MedicationName": "yoyoi",
+    "Dose": "500mg",
+    "Compartment": 4
+  },
+  {
+    "Timestamp": "2025-06-01T21:49:48.4308493+02:00",
+    "MedicationName": "yoyoi",
+    "Dose": "500mg",
+    "Compartment": 4
+  },
+  {
+    "Timestamp": "2025-06-01T21:50:46.8568269+02:00",
+    "MedicationName": "Paracetamol",
+    "Dose": "20g",
+    "Compartment": 1
+  },
+  {
+    "Timestamp": "2025-06-01T21:58:19.4248925+02:00",
+    "MedicationName": "Paracetamol",
+    "Dose": "20g",
+    "Compartment": 1
+  }
+]

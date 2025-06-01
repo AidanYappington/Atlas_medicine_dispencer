@@ -1,0 +1,95 @@
+@page "/Logbook"
+@using System
+@using System.Collections.Generic
+
+@inject LogService LogService
+@rendermode InteractiveServer
+
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Medicijn Inname Log</h3>
+        </div>
+        <div class="card-body">
+            @if (logs.Count == 0)
+            {
+                <div class="alert alert-info">Geen medicijnen ingenomen.</div>
+            }
+            else
+            {
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Tijd</th>
+                            <th>Compartiment</th>
+                            <th>Medicijn</th>
+                            <th>Dosis</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var log in PagedLogs)
+                        {
+                            <tr>
+                                <td>@log.Timestamp.ToString("dd-MM-yyyy HH:mm")</td>
+                                <td>@log.Compartment</td>
+                                <td>@log.MedicationName</td>
+                                <td>@log.Dose</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                <nav>
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="PrevPage">Vorige</button>
+                        </li>
+                        @for (int i = 1; i <= TotalPages; i++)
+                        {
+                            var pageNum = i; // Capture the current value of i
+                            <li class="page-item @(CurrentPage == pageNum ? "active" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                            </li>
+                        }
+                        <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="NextPage">Volgende</button>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<LogEntry> logs = new();
+    private int CurrentPage = 1;
+    private int PageSize = 15;
+
+    private IEnumerable<LogEntry> PagedLogs =>
+        logs.Skip((CurrentPage - 1) * PageSize).Take(PageSize);
+
+    private int TotalPages =>
+        (int)Math.Ceiling((double)logs.Count / PageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        logs = await LogService.GetLogsAsync();
+    }
+
+    private void PrevPage()
+    {
+        if (CurrentPage > 1)
+            CurrentPage--;
+    }
+
+    private void NextPage()
+    {
+        if (CurrentPage < TotalPages)
+            CurrentPage++;
+    }
+
+    private void GoToPage(int page)
+    {
+        CurrentPage = page;
+    }
+}
