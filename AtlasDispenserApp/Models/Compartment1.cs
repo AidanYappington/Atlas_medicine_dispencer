@@ -9,6 +9,7 @@ public class Compartiment1
     public int Id { get; set; }
 
     [ForeignKey("Medicine")]
+
     public int MedicineId { get; set; }
 
     public int InStock { get; set; }
