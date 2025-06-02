@@ -69,7 +69,7 @@ public static class LEDService
             blinkState = !blinkState;
             if (simulate)
             {
-                Console.WriteLine($"Simulated LED {(blinkState ? "ON" : "OFF")}");
+                // Console.WriteLine($"Simulated LED {(blinkState ? "ON" : "OFF")}");
             }
             else if (initialized)
             {

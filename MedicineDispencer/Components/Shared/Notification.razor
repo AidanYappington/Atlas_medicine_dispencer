@@ -1,7 +1,11 @@
+@rendermode InteractiveServer
+
 @inject NotificationService NotificationService
 @inject LogService LogService
 
-@rendermode InteractiveServer
+@implements IDisposable
+
+
 
 @if (show)
 {
@@ -38,31 +42,27 @@
 }
 
 @code {
+    private bool show => NotificationService.IsNotificationActive;
     private List<(int, MedicijnCompartiment)>? dueCompartments => NotificationService.dueCompartments;
     // Group and count for display and logging
     private IEnumerable<(int CompartmentIndex, MedicijnCompartiment Compartment, int Amount)> GroupedDueCompartments =>
-        dueCompartments?
-            .GroupBy(dc => dc.Item1)
-            .Select(g => (g.Key, g.First().Item2, g.Count()))
-            ?? Enumerable.Empty<(int, MedicijnCompartiment, int)>();
-
-
-    private bool show => NotificationService.IsNotificationActive;
+    dueCompartments?
+    .GroupBy(dc => dc.Item1)
+    .Select(g => (g.Key, g.First().Item2, g.Count()))
+    ?? Enumerable.Empty<(int, MedicijnCompartiment, int)>();
 
     protected override void OnInitialized()
     {
-        NotificationService.OnNotification = ShowNotification;
+        NotificationService.OnNotification += ShowNotification;
     }
 
-    private void ShowNotification(List<(int, MedicijnCompartiment)> compartments)
+    private void ShowNotification()
     {
-        Console.WriteLine("Notification received");
-        Console.WriteLine($"Due Compartments Count: {dueCompartments.Count}");
         InvokeAsync(StateHasChanged);
     }
 
     public async Task TakeMedication()
-    {   
+    {
         if (dueCompartments != null)
         {
             foreach (var group in GroupedDueCompartments)
@@ -86,5 +86,10 @@
     public void DismissReminder()
     {
         NotificationService.DismissReminder();
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnNotification -= ShowNotification;
     }
 }

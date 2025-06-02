@@ -7,8 +7,7 @@ public class NotificationService
     private bool notify = false;
     public List<(int, MedicijnCompartiment)> dueCompartments = [];
     public bool IsNotificationActive = false;
-    public Action<List<(int, MedicijnCompartiment)>>? OnNotification;
-
+    public event Action? OnNotification;
 
     private DateTime? lastDismissedAt = null;
 
@@ -23,10 +22,10 @@ public class NotificationService
     public void TriggerManualReminder(int index, MedicijnCompartiment compartment)
     {
         IsNotificationActive = true;
-        LEDService.TurnOn();
         dueCompartments.Add((index + 1, compartment));
-        OnNotification?.Invoke(dueCompartments);
-        
+        LEDService.TurnOn();
+        OnNotification?.Invoke();
+
         // Open servo, then close after 1 second
         Task.Run(async () =>
         {
@@ -64,7 +63,7 @@ public class NotificationService
             LEDService.TurnOn();
             notify = false;
             IsNotificationActive = true;
-            OnNotification?.Invoke(dueCompartments);
+            OnNotification?.Invoke();
             lastDismissedAt = null;
             return;
         }
