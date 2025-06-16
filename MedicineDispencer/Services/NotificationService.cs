@@ -23,6 +23,7 @@ public class NotificationService
     {
         IsNotificationActive = true;
         dueCompartments.Add((index + 1, compartment));
+        ButtonService.StartPolling();
         LEDService.TurnOn();
         OnNotification?.Invoke();
 
@@ -60,6 +61,7 @@ public class NotificationService
 
         if (notify)
         {
+            ButtonService.StartPolling();
             LEDService.TurnOn();
             notify = false;
             IsNotificationActive = true;
@@ -72,17 +74,21 @@ public class NotificationService
     // Call this when the user dismisses a reminder
     public void DismissReminder()
     {
+        ButtonService.StopPolling();
         LEDService.TurnOff();
         IsNotificationActive = false;
         lastDismissedAt = DateTime.Now;
+        OnNotification?.Invoke();
     }
 
     // Call this when medication is taken to clear the dismissal
     public void ClearReminders()
     {
+        ButtonService.StopPolling();
         LEDService.TurnOff();
         lastDismissedAt = null;
         IsNotificationActive = false;
         dueCompartments.Clear();
+        OnNotification?.Invoke();
     }
 }
