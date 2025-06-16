@@ -78,7 +78,7 @@ public class CameraService
     {
         var frame = CaptureWithLibcamera();
         Console.WriteLine("Set frame");
-        if (frame.Empty())
+        if (frame == null)
         {
             Console.WriteLine("[CameraService] Failed to capture frame from camera.");
             return null;
@@ -87,7 +87,7 @@ public class CameraService
         {
             Console.WriteLine(frame);
         }
-        return frame.ToBytes(".jpg");
+        return frame;
     }
 
     public string? GetJpegFrameBase64()
