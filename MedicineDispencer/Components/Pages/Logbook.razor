@@ -1,14 +1,20 @@
 @page "/Logbook"
 @using System
 @using System.Collections.Generic
+@using System.Linq
+@using System.Text
 
 @inject LogService LogService
+@inject IJSRuntime JSRuntime
 @rendermode InteractiveServer
 
 <div class="container">
     <div class="card mb-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h3 class="mb-0">Medicijn Inname Log</h3>
+            <button class="btn btn-light" @onclick="ExportLogsAsync">
+                <i class="bi bi-download me-1"></i> Exporteer logs
+            </button>
         </div>
         <div class="card-body">
             @if (logs.Count == 0)
@@ -91,5 +97,38 @@
     private void GoToPage(int page)
     {
         CurrentPage = page;
+    }
+
+    /// <summary>
+    /// Exporteert alle logs naar een tekstbestand en downloadt deze in de browser.
+    /// </summary>
+    private async Task ExportLogsAsync()
+    {
+        if (logs.Count == 0)
+        {
+            // Niets te exporteren
+            return;
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Tijd;Compartiment;Medicijn;Dosis");
+        foreach (var log in logs)
+        {
+        sb.AppendLine($"\"{log.Timestamp:dd-MM-yyyy HH:mm}\";\"{log.Compartment}\";\"{log.MedicationName}\";\"{log.Dose}\"");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        var fileName = $"logs_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+
+        var js = $@"var link = document.createElement('a');
+link.href = 'data:text/csv;base64,{base64}';
+link.download = '{fileName}';
+link.style.display = 'none';
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);";
+
+        await JSRuntime.InvokeVoidAsync("eval", js);
     }
 }
