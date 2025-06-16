@@ -98,25 +98,40 @@ public class CameraService
 
     public byte[]? CaptureWithLibcamera()
     {
-        var filePath = "/tmp/capture.jpg";
         var psi = new System.Diagnostics.ProcessStartInfo
         {
-            FileName = "libcamera-still",
-            Arguments = $"-o {filePath} --immediate --nopreview -t 1",
+            FileName = "libcamera-jpeg",
+            Arguments = "-o - --nopreview --timeout 1",
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
             CreateNoWindow = true
         };
-        using (var process = System.Diagnostics.Process.Start(psi))
+        try
         {
-            process.WaitForExit();
+            Console.WriteLine("[CameraService] Capturing image with libcamera-jpeg...");
+            using (var process = System.Diagnostics.Process.Start(psi))
+            using (var ms = new MemoryStream())
+            {
+                process!.StandardOutput.BaseStream.CopyTo(ms);
+                process.WaitForExit();
+                if (ms.Length > 0)
+                {
+                    Console.WriteLine("[CameraService] Image captured successfully (in memory).");
+                    return ms.ToArray();
+                }
+                else
+                {
+                    Console.WriteLine("[CameraService] No image data captured.");
+                    return null;
+                }
+            }
         }
-        if (System.IO.File.Exists(filePath))
+        catch (Exception ex)
         {
-            return System.IO.File.ReadAllBytes(filePath);
+            Console.WriteLine($"[CameraService] Error capturing image: {ex.Message}");
+            return null;
         }
-        return null;
     }
 }
 
