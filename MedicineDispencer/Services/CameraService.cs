@@ -79,7 +79,9 @@ public class CameraService
         const int cameraIndex = 0; // Change if you want to try a different camera
         Console.WriteLine($"[CameraService] Trying to open camera with index: {cameraIndex}");
         using var capture = new VideoCapture(cameraIndex);
+        Console.WriteLine("Set capture");
         using var frame = new Mat();
+        Console.WriteLine("Set frame");
         capture.Read(frame);
         if (frame.Empty())
         {
