@@ -76,13 +76,8 @@ public class CameraService
 
     public byte[]? GetJpegFrame()
     {
-        const int cameraIndex = 0; // Change if you want to try a different camera
-        Console.WriteLine($"[CameraService] Trying to open camera with index: {cameraIndex}");
-        var capture = new VideoCapture(cameraIndex);
-        Console.WriteLine("Set capture");
-        var frame = new Mat();
+        var frame = CaptureWithLibcamera();
         Console.WriteLine("Set frame");
-        capture.Read(frame);
         if (frame.Empty())
         {
             Console.WriteLine("[CameraService] Failed to capture frame from camera.");
@@ -99,6 +94,29 @@ public class CameraService
     {
         var bytes = GetJpegFrame();
         return bytes != null ? Convert.ToBase64String(bytes) : null;
+    }
+
+    public byte[]? CaptureWithLibcamera()
+    {
+        var filePath = "/tmp/capture.jpg";
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "libcamera-still",
+            Arguments = $"-o {filePath} --immediate --nopreview -t 1",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        using (var process = System.Diagnostics.Process.Start(psi))
+        {
+            process.WaitForExit();
+        }
+        if (System.IO.File.Exists(filePath))
+        {
+            return System.IO.File.ReadAllBytes(filePath);
+        }
+        return null;
     }
 }
 
