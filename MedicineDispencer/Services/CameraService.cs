@@ -76,10 +76,16 @@ public class CameraService
 
     public byte[]? GetJpegFrame()
     {
-        using var capture = new VideoCapture(0); // 0 = default camera
+        const int cameraIndex = 0; // Change if you want to try a different camera
+        Console.WriteLine($"[CameraService] Trying to open camera with index: {cameraIndex}");
+        using var capture = new VideoCapture(cameraIndex);
         using var frame = new Mat();
         capture.Read(frame);
-        if (frame.Empty()) return null;
+        if (frame.Empty())
+        {
+            Console.WriteLine("[CameraService] Failed to capture frame from camera.");
+            return null;
+        }
         return frame.ToBytes(".jpg");
     }
 
