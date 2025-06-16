@@ -10,6 +10,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddSingleton<CompartmentsData>();
 builder.Services.AddSingleton<NotificationService>();
 builder.Services.AddSingleton<LogService>();
+builder.Services.AddSingleton<CameraService>();
 
 var app = builder.Build();
 
