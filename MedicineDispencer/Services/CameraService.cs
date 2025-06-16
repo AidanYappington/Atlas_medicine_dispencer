@@ -86,6 +86,10 @@ public class CameraService
             Console.WriteLine("[CameraService] Failed to capture frame from camera.");
             return null;
         }
+        else
+        {
+            Console.WriteLine(frame);
+        }
         return frame.ToBytes(".jpg");
     }
 
