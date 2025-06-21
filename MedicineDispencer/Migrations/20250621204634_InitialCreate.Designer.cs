@@ -3,6 +3,7 @@ using System;
 using MedicineDispencer.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MedicineDispencer.Migrations
 {
     [DbContext(typeof(PillDispenserContext))]
-    partial class PillDispenserContextModelSnapshot : ModelSnapshot
+    [Migration("20250621204634_InitialCreate")]
+    partial class InitialCreate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "9.0.6");
@@ -21,9 +24,6 @@ namespace MedicineDispencer.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int>("CompartmentNumber")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("MedicationId")

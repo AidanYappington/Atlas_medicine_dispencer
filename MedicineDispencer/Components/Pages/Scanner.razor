@@ -1,96 +1,25 @@
 @page "/Scanner"
 @using System.Text.Json
-@using System.IO
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JS
 
-<h1>JSON Bestand Viewer</h1>
-
-<div class="row mb-3">
-    <div class="col-md-6">
-        <InputFile OnChange="@LoadFile" class="form-control" />
-    </div>
-    <div class="col-md-2">
-        <button class="btn btn-primary" @onclick="ClearJson">Wissen</button>
-    </div>
-</div>
-
-@if (!string.IsNullOrEmpty(errorMessage))
-{
-    <div class="alert alert-danger">
-        @errorMessage
-    </div>
-}
+<InputFile OnChange="ReadFile" />
 
 @if (!string.IsNullOrEmpty(jsonContent))
 {
-    <div class="card">
-        <div class="card-header">
-            <h4>JSON Inhoud</h4>
-        </div>
-        <div class="card-body">
-            <pre class="json-content">@formattedJson</pre>
-        </div>
-    </div>
+    <pre>@jsonContent</pre>
 }
 
 @code {
-    private string jsonContent = string.Empty;
-    private string formattedJson = string.Empty;
-    private string errorMessage = string.Empty;
+    string jsonContent = "";
 
-    private async Task LoadFile(InputFileChangeEventArgs e)
+    private async Task ReadFile(InputFileChangeEventArgs e)
     {
-        try
-        {
-            errorMessage = string.Empty;
-            
-            if (e.File.ContentType != "application/json" && !e.File.Name.EndsWith(".json"))
-            {
-                errorMessage = "Alleen JSON bestanden worden ondersteund.";
-                return;
-            }
+        var file = e.File;
+        using var stream = file.OpenReadStream();
+        using var reader = new StreamReader(stream);
+        jsonContent = await reader.ReadToEndAsync();
 
-            using var stream = e.File.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024); // 5MB max
-            using var reader = new StreamReader(stream);
-            jsonContent = await reader.ReadToEndAsync();
-
-            // Format JSON voor weergave
-            try
-            {
-                using var document = JsonDocument.Parse(jsonContent);
-                formattedJson = JsonSerializer.Serialize(document, new JsonSerializerOptions 
-                { 
-                    WriteIndented = true 
-                });
-            }
-            catch
-            {
-                // Als we het niet kunnen formatteren, toon dan de ruwe inhoud
-                formattedJson = jsonContent;
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Fout bij het inlezen van bestand: {ex.Message}";
-            jsonContent = string.Empty;
-            formattedJson = string.Empty;
-        }
-    }
-
-    private void ClearJson()
-    {
-        jsonContent = string.Empty;
-        formattedJson = string.Empty;
-        errorMessage = string.Empty;
+        await JS.InvokeVoidAsync("console.log", $"JSON: {jsonContent}");
     }
 }
-
-<style>
-    .json-content {
-        background-color: #f8f9fa;
-        padding: 15px;
-        border-radius: 5px;
-        overflow-x: auto;
-        white-space: pre-wrap;
-        font-family: monospace;
-    }
-</style>

@@ -19,7 +19,8 @@ namespace MedicineDispencer.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     Description = table.Column<string>(type: "TEXT", nullable: false),
-                    Dosage = table.Column<string>(type: "TEXT", nullable: false)
+                    Dosage = table.Column<string>(type: "TEXT", nullable: false),
+                    Stock = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -81,7 +82,7 @@ namespace MedicineDispencer.Migrations
                 {
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
-                    Time = table.Column<TimeSpan>(type: "TEXT", nullable: false),
+                    IntervalSeconds = table.Column<int>(type: "INTEGER", nullable: false),
                     CompartmentId = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>

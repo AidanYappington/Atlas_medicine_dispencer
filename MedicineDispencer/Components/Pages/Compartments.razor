@@ -29,9 +29,7 @@
                                 </div>
                                 <div class="card-body">
                                     <p><strong>Medicijn:</strong> @compartment.Medication?.Name (@compartment.Medication?.Dosage)</p>
-
                                     <p><strong>Voorraad:</strong> @compartment.Stock tabletten</p>
-
                                     <p><strong>Volgende dosering:</strong> @GetNextDoseTime(compartment)</p>
 
                                     <button class="btn btn-outline-success btn-sm" @onclick="() => TriggerMedicijnHerinnering(compartment.Id)">
@@ -56,12 +54,10 @@
             .Include(c => c.Medication)
             .Include(c => c.DosingTimes)
             .ToListAsync();
-
     }
 
     private void TriggerMedicijnHerinnering(int id)
     {
-        // TODO: real reminder logic (e.g. GPIO / notification)
         Console.WriteLine($"Reminder triggered for Compartment {id}");
     }
 
@@ -70,20 +66,18 @@
         if (compartment.DosingTimes == null || compartment.DosingTimes.Count == 0)
             return "Geen doseringen gepland";
 
-        // Get the next dosing time today or tomorrow
-        var now = DateTime.Now.TimeOfDay;
-        var next = compartment.DosingTimes
-            .Select(dt => dt.Time)
-            .Where(t => t > now)
+        var now = DateTime.Now;
+        var times = compartment.DosingTimes
+            .Select(dt => TimeSpan.FromSeconds(dt.IntervalSeconds))
+            .ToList();
+
+        // Calculate next dose time from now
+        var nextDose = times
+            .Select(interval => now.Add(interval))
             .OrderBy(t => t)
             .FirstOrDefault();
 
-        if (next == default)
-            next = compartment.DosingTimes.Select(t => t.Time).OrderBy(t => t).First();
-
-        var timeToday = DateTime.Today + next;
-        var countdown = timeToday - DateTime.Now;
-
-        return $"{next:hh\\:mm} (in {countdown.Hours}h {countdown.Minutes}m)";
+        var remaining = nextDose - now;
+        return $"{remaining:mm\\:ss} (in {remaining.TotalSeconds:F0} sec)";
     }
 }

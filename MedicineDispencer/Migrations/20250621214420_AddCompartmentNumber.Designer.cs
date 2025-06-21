@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MedicineDispencer.Migrations
 {
     [DbContext(typeof(PillDispenserContext))]
-    [Migration("20250621163300_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20250621214420_AddCompartmentNumber")]
+    partial class AddCompartmentNumber
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,9 @@ namespace MedicineDispencer.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CompartmentNumber")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("MedicationId")
@@ -48,8 +51,8 @@ namespace MedicineDispencer.Migrations
                     b.Property<int>("CompartmentId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<TimeSpan>("Time")
-                        .HasColumnType("TEXT");
+                    b.Property<int>("IntervalSeconds")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -58,7 +61,7 @@ namespace MedicineDispencer.Migrations
                     b.ToTable("DosingTimes");
                 });
 
-            modelBuilder.Entity("MedicineDispencer.Data.Medication", b =>
+            modelBuilder.Entity("MedicineDispencer.Data.MedicationStock", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -75,6 +78,9 @@ namespace MedicineDispencer.Migrations
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<int>("Stock")
+                        .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
 
@@ -123,7 +129,7 @@ namespace MedicineDispencer.Migrations
 
             modelBuilder.Entity("MedicineDispencer.Data.Compartment", b =>
                 {
-                    b.HasOne("MedicineDispencer.Data.Medication", "Medication")
+                    b.HasOne("MedicineDispencer.Data.MedicationStock", "Medication")
                         .WithMany()
                         .HasForeignKey("MedicationId");
 
