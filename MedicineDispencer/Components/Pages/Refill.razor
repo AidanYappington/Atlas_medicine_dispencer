@@ -1,80 +1,44 @@
 @page "/Refill"
-@using System
-@using System.Collections.Generic
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using MedicineDispencer.Data
+@inject PillDispenserContext Db
 @inject IJSRuntime JSRuntime
 
 <div class="container">
     <div class="card mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-            <h3 class="mb-0">Compartiment Bijvullen</h3>
-            <button class="btn btn-light" @onclick="BackToMenu">Terug</button>
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">💉 Nieuwe Medicatie Importeren</h3>
         </div>
         <div class="card-body">
-            <div class="mb-3">
-                <label for="refill-compartment-select" class="form-label">Compartiment:</label>
-                <select id="refill-compartment-select" class="form-select" @bind="selectedRefillCompartmentIndex">
-                    @for (int i = 0; i < compartments.Count; i++)
-                    {
-                        if (compartments[i] != null)
-                        {
-                            <option value="@i">Compartiment @(i + 1) - @compartments[i].MedicijnNaam (@compartments[i].Voorraad)</option>
-                        }
-                    }
-                </select>
-            </div>
-            
-            <div class="mb-3">
-                <label for="refill-amount" class="form-label">Aantal toe te voegen:</label>
-                <input id="refill-amount" type="number" class="form-control" @bind="refillAmount" min="1" />
-            </div>
-            
-            <button class="btn btn-primary" @onclick="SaveRefill">Bijvullen</button>
+            <p>Upload een JSON-bestand met medicatiegegevens (naam, dosering).</p>
+            <InputFile OnChange="HandleFileSelected" />
         </div>
     </div>
 </div>
 
 @code {
-    private int selectedRefillCompartmentIndex = 0;
-    private int refillAmount = 1;
-    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
-
-    private void BackToMenu()
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
     {
-        // Logic to navigate back to the menu
-    }
+        var file = e.File;
+        if (file != null)
+        {
+            using var stream = file.OpenReadStream();
+            var meds = await JsonSerializer.DeserializeAsync<List<Medication>>(stream);
 
-    private void SaveRefill()
-    {
-        if (refillAmount <= 0)
-        {
-            // Show error message
-            return;
-        }
-        
-        if (compartments[selectedRefillCompartmentIndex] != null)
-        {
-            compartments[selectedRefillCompartmentIndex]!.VulVoorraadBij(refillAmount);
-            // Show success message
-        }
-        else
-        {
-            // Show error message
-        }
-    }
-
-    class MedicijnCompartiment
-    {
-        public string MedicijnNaam { get; private set; }
-        public int Voorraad { get; private set; }
-
-        public MedicijnCompartiment(string medicijnNaam)
-        {
-            MedicijnNaam = medicijnNaam;
-        }
-
-        public void VulVoorraadBij(int aantal)
-        {
-            Voorraad += aantal;
+            if (meds != null)
+            {
+                foreach (var med in meds)
+                {
+                    // Avoid duplicates
+                    if (!Db.Medications.Any(m => m.Name == med.Name && m.Dosage == med.Dosage))
+                    {
+                        Db.Medications.Add(med);
+                    }
+                }
+                await Db.SaveChangesAsync();
+                await JSRuntime.InvokeVoidAsync("alert", "Medicatie succesvol geïmporteerd!");
+            }
         }
     }
 }

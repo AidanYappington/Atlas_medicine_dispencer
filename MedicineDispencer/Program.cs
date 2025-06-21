@@ -1,18 +1,34 @@
 using MedicineDispencer.Components;
+using Microsoft.EntityFrameworkCore;
+using MedicineDispencer.Data;
+using MedicineDispencer;
+
+
 using System.Timers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Add services to the container
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Add a service to initialize default data
+// Register the database context BEFORE building
+builder.Services.AddDbContext<PillDispenserContext>(options =>
+    options.UseSqlite("Data Source=pilldispenser.db"));
+
+// Register the default data initializer
 builder.Services.AddSingleton<IDataInitializer, DataInitializer>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Ensure the database is created on startup
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<PillDispenserContext>();
+    db.Database.EnsureCreated();
+}
+
+// Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
@@ -20,14 +36,13 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAntiforgery();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Initialize defaults on application startup
+// Run any startup logic (data init, timers, GPIO)
 using (var scope = app.Services.CreateScope())
 {
     var dataInitializer = scope.ServiceProvider.GetRequiredService<IDataInitializer>();
@@ -36,7 +51,10 @@ using (var scope = app.Services.CreateScope())
 
 app.Run();
 
-// Example of a data initializer service
+// -----------------------------
+// Supporting Services
+// -----------------------------
+
 public interface IDataInitializer
 {
     void InitializeDefaults();
@@ -44,40 +62,38 @@ public interface IDataInitializer
 
 public class DataInitializer : IDataInitializer
 {
-    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
-    private System.Timers.Timer checkMedicationsTimer;
+    private List<MedicijnCompartiment?> compartments = new();
+    private System.Timers.Timer? checkMedicationsTimer;
+
 
     public void InitializeDefaults()
     {
-        // Initialize with 4 empty compartments
+        // Example: Initialize 4 empty compartments
         for (int i = 0; i < 4; i++)
             compartments.Add(null);
 
-        // Check medication schedules every minute
+        // Set up medication schedule checker every 60 sec
         checkMedicationsTimer = new System.Timers.Timer(60000);
         checkMedicationsTimer.Elapsed += CheckMedicationsTimerElapsed;
         checkMedicationsTimer.AutoReset = true;
         checkMedicationsTimer.Start();
 
-        // Initialize GPIO
         InitializeGpio();
-
-        // Setup example
         SetupVoorbeeldDispenser();
     }
 
     private void CheckMedicationsTimerElapsed(object? sender, ElapsedEventArgs e)
     {
-        // Logic to check medication schedules
+        // Medication schedule logic here
     }
 
     private void InitializeGpio()
     {
-        // Logic to initialize GPIO
+        // GPIO logic here
     }
 
     private void SetupVoorbeeldDispenser()
     {
-        // Logic to set up example dispenser
+        // Optional: preload a test configuration
     }
 }

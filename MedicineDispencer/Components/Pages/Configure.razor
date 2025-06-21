@@ -1,6 +1,10 @@
 @page "/Configure"
 @using System
 @using System.Collections.Generic
+@using System.Linq
+@using MedicineDispencer.Data
+
+@inject PillDispenserContext Db
 @inject IJSRuntime JSRuntime
 
 <div class="container">
@@ -10,73 +14,57 @@
         </div>
         <div class="card-body">
             <div class="mb-3">
-                <label for="compartment-select" class="form-label">Compartiment:</label>
-                <select id="compartment-select" class="form-select" @bind="selectedCompartmentIndex">
-                    @for (int i = 0; i < compartments.Count; i++)
-                    {
-                        <option value="@i">Compartiment @(i + 1)</option>
-                    }
-                </select>
-            </div>
-            
-            <div class="mb-3">
                 <label for="medication-name" class="form-label">Medicijn naam:</label>
                 <input id="medication-name" type="text" class="form-control" @bind="configMedicationName" />
             </div>
-            
+
             <div class="mb-3">
                 <label for="medication-dosage" class="form-label">Dosering:</label>
                 <input id="medication-dosage" type="text" class="form-control" @bind="configMedicationDosage" />
             </div>
-            
+
             <div class="mb-3">
                 <label class="form-label">Doseringstijden:</label>
-                
+
                 @foreach (var time in configDosingTimes)
                 {
                     var index = configDosingTimes.IndexOf(time);
                     <div class="input-group mb-2">
-                        <input type="time" class="form-control" value="@time.ToString(@"hh\:mm")" 
-                            @onchange="@(e => UpdateDosingTime(index, e.Value?.ToString()))" />
-                        <button class="btn btn-outline-danger" @onclick="() => RemoveDosingTime(index)">
-                            Verwijder
-                        </button>
+                        <input type="time" class="form-control" value="@time.ToString(@"hh\:mm")"
+                               @onchange="@(e => UpdateDosingTime(index, e.Value?.ToString()))" />
+                        <button class="btn btn-outline-danger" @onclick="() => RemoveDosingTime(index)">Verwijder</button>
                     </div>
                 }
-                
-                <button class="btn btn-outline-primary" @onclick="AddDosingTime">
-                    Tijdstip toevoegen
-                </button>
+
+                <button class="btn btn-outline-primary" @onclick="AddDosingTime">Tijdstip toevoegen</button>
             </div>
-            
+
             <div class="mb-3">
                 <label for="medication-stock" class="form-label">Beginvoorraad:</label>
                 <input id="medication-stock" type="number" class="form-control" @bind="configMedicationStock" min="0" />
             </div>
-            
+
             <button class="btn btn-primary" @onclick="SaveCompartmentConfig">Opslaan</button>
         </div>
     </div>
 </div>
 
 @code {
-    private int selectedCompartmentIndex = 0;
     private string configMedicationName = "";
     private string configMedicationDosage = "";
-    private List<TimeSpan> configDosingTimes = new List<TimeSpan>();
+    private List<TimeSpan> configDosingTimes = new();
     private int configMedicationStock = 0;
-    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
-    private void AddDosingTime()
-    {
-        configDosingTimes.Add(new TimeSpan(8, 0, 0)); // Default: 8:00
-    }
+
+    private void AddDosingTime() => configDosingTimes.Add(new TimeSpan(8, 0, 0));
 
     private void UpdateDosingTime(int index, string? timeString)
     {
         if (timeString != null && index >= 0 && index < configDosingTimes.Count)
         {
-            string[] parts = timeString.Split(':');
-            if (parts.Length >= 2 && int.TryParse(parts[0], out int hours) && int.TryParse(parts[1], out int minutes))
+            var parts = timeString.Split(':');
+            if (parts.Length == 2 &&
+                int.TryParse(parts[0], out int hours) &&
+                int.TryParse(parts[1], out int minutes))
             {
                 configDosingTimes[index] = new TimeSpan(hours, minutes, 0);
             }
@@ -93,22 +81,39 @@
 
     private void SaveCompartmentConfig()
     {
-        if (string.IsNullOrWhiteSpace(configMedicationName) || 
-            string.IsNullOrWhiteSpace(configMedicationDosage))
-        {
-            // Show error message
+        if (string.IsNullOrWhiteSpace(configMedicationName) || string.IsNullOrWhiteSpace(configMedicationDosage))
             return;
-        }
-        
-        // Save configuration logic
-    }
 
-    class MedicijnCompartiment
-    {
-        public string MedicijnNaam { get; private set; }
-        public MedicijnCompartiment(string medicijnNaam)
+        // Check if this medication already exists in the database
+        var medication = Db.Medications
+            .FirstOrDefault(m => m.Name == configMedicationName && m.Dosage == configMedicationDosage);
+
+        // If not found, create a new one
+        if (medication == null)
         {
-            MedicijnNaam = medicijnNaam;
+            medication = new Medication
+            {
+                Name = configMedicationName,
+                Dosage = configMedicationDosage
+            };
+            Db.Medications.Add(medication);
+            Db.SaveChanges();
         }
+
+        var newCompartment = new Compartment
+        {
+            Medication = medication,
+            Stock = configMedicationStock,
+            DosingTimes = configDosingTimes.Select(t => new DosingTime { Time = t }).ToList()
+        };
+
+        Db.Compartments.Add(newCompartment);
+        Db.SaveChanges();
+
+        // Clear form after save
+        configMedicationName = "";
+        configMedicationDosage = "";
+        configMedicationStock = 0;
+        configDosingTimes.Clear();
     }
 }
