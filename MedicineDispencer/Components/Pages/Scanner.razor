@@ -16,13 +16,12 @@
     {
         CameraService.StartCamera();
         // Start the timer to refresh every second (1000 ms)
-        _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 1000);
+        _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 100);
         await RefreshCamera();
     }
 
     private async Task RefreshCamera()
     {
-        Console.WriteLine("Refreshing camera frame...");
         try
         {
             var base64 = CameraService.GetJpegFrameBase64();

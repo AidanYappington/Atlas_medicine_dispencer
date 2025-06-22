@@ -26,11 +26,11 @@ public class CameraService
 
         StopCamera();
 
-        // Use a shell loop to call libcamera-jpeg every 0.5 seconds
+        // Use a shell loop to call libcamera-jpeg every 0.2 seconds (5 fps)
         var psi = new ProcessStartInfo
         {
             FileName = "/bin/bash",
-            Arguments = $"-c \"while true; do libcamera-jpeg -o {_framePath} --width 640 --height 480 --nopreview --timeout 100; sleep 0.5; done\"",
+            Arguments = $"-c \"while true; do libcamera-jpeg -o {_framePath} --width 640 --height 480 --nopreview --timeout 50 > /dev/null 2>&1; sleep 0.2; done\"",
             RedirectStandardOutput = false,
             RedirectStandardError = false,
             UseShellExecute = false,
