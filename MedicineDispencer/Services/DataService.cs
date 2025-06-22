@@ -45,14 +45,17 @@ public static class DataService
 
     public static bool AddToFirstEmpty(MedicijnCompartiment compartment)
     {
+        Console.WriteLine($"[DataService] Adding compartment: {compartment.MedicijnNaam} ({compartment.Voorraad})");
         for (int i = 0; i < CompartmentsData.compartments.Length; i++)
         {
             if (CompartmentsData.compartments[i] == null)
             {
                 CompartmentsData.compartments[i] = compartment;
+                Console.WriteLine($"[DataService] Compartment added at index {i + 1}.");
                 return true;
             }
         }
+        Console.WriteLine("[DataService] No empty compartment found.");
         return false; // No empty compartment found
     }
 }
