@@ -4,134 +4,96 @@ using System.Text.Json;
 using OpenCvSharp;
 using ZXing;
 using ZXing.Windows.Compatibility;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
 
 public class CameraService
 {
+    private Process? _backgroundProcess;
+    private string _framePath = "/tmp/cam.jpg";
+    private Timer? _monitorTimer;
+
     public CameraService() { }
 
-    public void StartScanner()
+    /// <summary>
+    /// Starts the background camera process if not already running.
+    /// </summary>
+    public void StartCamera()
     {
-        using var capture = new VideoCapture(0); // 0 = default camera
-        using var window = new Window("QR Scanner");
+        if (_backgroundProcess != null && !_backgroundProcess.HasExited)
+            return;
 
-        Console.WriteLine("Scanner gestart. Druk op 'q' om te stoppen.");
+        // Kill any previous process writing to the same file
+        StopCamera();
 
-        using var frame = new Mat();
-        var reader = new ZXing.QrCode.QRCodeReader();
-
-        while (true)
+        // Start libcamera-vid + ffmpeg to continuously write frames to /tmp/cam.jpg
+        var psi = new ProcessStartInfo
         {
-            capture.Read(frame);
-            if (frame.Empty()) continue;
+            FileName = "/bin/bash",
+            Arguments = $"-c \"libcamera-vid -t 0 --width 640 --height 480 --nopreview -o - | ffmpeg -y -i - -vf fps=2 -update 1 {_framePath}\"",
+            RedirectStandardOutput = false,
+            RedirectStandardError = false,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
 
-            using var bitmap = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(frame);
+        _backgroundProcess = Process.Start(psi);
 
-            var luminanceSource = new BitmapLuminanceSource(bitmap);
-            var binarizer = new ZXing.Common.HybridBinarizer(luminanceSource);
-            var binaryBitmap = new BinaryBitmap(binarizer);
-
-            Result? result = null;
-            try
+        // Optionally monitor the process and restart if it dies
+        _monitorTimer = new Timer(_ =>
+        {
+            if (_backgroundProcess == null || _backgroundProcess.HasExited)
             {
-                result = reader.decode(binaryBitmap);
+                StartCamera();
             }
-            catch { /* ignore decode errors */ }
-
-            if (result != null)
-            {
-                var code = result.Text;
-                try
-                {
-                    var qrData = JsonSerializer.Deserialize<CompartmentQrData>(code);
-                    if (qrData != null)
-                    {
-                        Console.WriteLine($"QR Medicijn: {qrData.MedicijnNaam}, Dosis: {qrData.Dosis}, Voorraad: {qrData.Voorraad}, Tijden: {string.Join(", ", qrData.DoseringstijdenPerDag)}");
-                        // You can now use qrData to fill a MedicijnCompartiment later
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine("QR code kon niet worden gelezen als JSON: " + ex.Message);
-                }
-
-                // Draw rectangle if possible
-                if (result.ResultPoints.Length >= 2)
-                {
-                    var p1 = result.ResultPoints[0];
-                    var p2 = result.ResultPoints[1];
-                    Cv2.Rectangle(frame, new Point((int)p1.X, (int)p1.Y), new Point((int)p2.X, (int)p2.Y), Scalar.Green, 2);
-                }
-
-                // Draw text
-                Cv2.PutText(frame, $"QR: {code}", new Point(10, 30),
-                    HersheyFonts.HersheySimplex, 0.6, Scalar.Blue, 2);
-            }
-
-            window.ShowImage(frame);
-            var key = Cv2.WaitKey(1);
-            if (key == 'q') break;
-        }
-        Cv2.DestroyAllWindows();
+        }, null, 5000, 5000);
     }
 
+    /// <summary>
+    /// Stops the background camera process.
+    /// </summary>
+    public void StopCamera()
+    {
+        try
+        {
+            _backgroundProcess?.Kill(true);
+            _backgroundProcess?.Dispose();
+            _backgroundProcess = null;
+        }
+        catch { }
+        _monitorTimer?.Dispose();
+        _monitorTimer = null;
+    }
+
+    /// <summary>
+    /// Gets the latest JPEG frame from the background process.
+    /// </summary>
     public byte[]? GetJpegFrame()
     {
-        var frame = CaptureWithLibcamera();
-        Console.WriteLine("Set frame");
-        if (frame == null)
+        try
         {
-            Console.WriteLine("[CameraService] Failed to capture frame from camera.");
+            if (File.Exists(_framePath))
+            {
+                return File.ReadAllBytes(_framePath);
+            }
+            else
+            {
+                Console.WriteLine("[CameraService] No frame file found.");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[CameraService] Error reading frame: {ex.Message}");
             return null;
         }
-        else
-        {
-            Console.WriteLine(frame);
-        }
-        return frame;
     }
 
     public string? GetJpegFrameBase64()
     {
         var bytes = GetJpegFrame();
         return bytes != null ? Convert.ToBase64String(bytes) : null;
-    }
-
-    public byte[]? CaptureWithLibcamera()
-    {
-        var psi = new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "libcamera-jpeg",
-            Arguments = "-o - --nopreview --timeout 1",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        try
-        {
-            Console.WriteLine("[CameraService] Capturing image with libcamera-jpeg...");
-            using (var process = System.Diagnostics.Process.Start(psi))
-            using (var ms = new MemoryStream())
-            {
-                process!.StandardOutput.BaseStream.CopyTo(ms);
-                process.WaitForExit();
-                if (ms.Length > 0)
-                {
-                    Console.WriteLine("[CameraService] Image captured successfully (in memory).");
-                    return ms.ToArray();
-                }
-                else
-                {
-                    Console.WriteLine("[CameraService] No image data captured.");
-                    return null;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[CameraService] Error capturing image: {ex.Message}");
-            return null;
-        }
     }
 }
 
