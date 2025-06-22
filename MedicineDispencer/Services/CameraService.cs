@@ -33,7 +33,7 @@ public class CameraService
         var psi = new ProcessStartInfo
         {
             FileName = "/bin/bash",
-            Arguments = $"-c \"while true; do libcamera-jpeg -o {_framePath} --width 640 --height 480 --nopreview --timeout 50 > /dev/null 2>&1; sleep 0.2; done\"",
+            Arguments = $"-c \"while true; do libcamera-jpeg -o {_framePath} --width 1920 --height 1080 --quality 95 --nopreview --timeout 100 > /dev/null 2>&1; sleep 0.2; done\"",
             RedirectStandardOutput = false,
             RedirectStandardError = false,
             UseShellExecute = false,
