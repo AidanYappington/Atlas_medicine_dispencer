@@ -3,7 +3,7 @@
     "MedicijnNaam": "Paracetamol",
     "Dosis": "20g",
     "Status": 0,
-    "Voorraad": 9,
+    "Voorraad": 15,
     "DoseringstijdenPerDag": [
       "08:00:00"
     ],
@@ -19,6 +19,15 @@
     ],
     "LaatsteOpeningTijd": null
   },
-  null,
+  {
+    "MedicijnNaam": "5324egfrdt",
+    "Dosis": "534",
+    "Status": 0,
+    "Voorraad": 4235,
+    "DoseringstijdenPerDag": [
+      "08:00:00"
+    ],
+    "LaatsteOpeningTijd": null
+  },
   null
 ]

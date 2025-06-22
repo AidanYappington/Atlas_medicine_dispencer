@@ -38,4 +38,6 @@ app.Lifetime.ApplicationStopping.Register(() =>
 app.Lifetime.ApplicationStopping.Register(() => LEDService.Dispose());
 app.Lifetime.ApplicationStopping.Register(() => ServoService.Dispose());
 app.Lifetime.ApplicationStopping.Register(() => ButtonService.Dispose());
+await DataService.LoadCompartmentsAsync();
+
 app.Run();

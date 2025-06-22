@@ -20,7 +20,7 @@ public static class DataService
         await File.WriteAllTextAsync(compartmentsFilePath, json);
     }
 
-    public static async Task LoadCompartmentsAsync(int expectedLength)
+    public static async Task LoadCompartmentsAsync()
     {
         if (!File.Exists(compartmentsFilePath))
             return;
@@ -33,17 +33,7 @@ public static class DataService
         if (loadedCompartments == null)
             return;
 
-        // Ensure the array is the expected length
-        if (loadedCompartments.Length < expectedLength)
-        {
-            var resized = new MedicijnCompartiment?[expectedLength];
-            loadedCompartments.CopyTo(resized, 0);
-            CompartmentsData.compartments = resized;
-        }
-        else
-        {
-            CompartmentsData.compartments = loadedCompartments;
-        }
+        CompartmentsData.compartments = loadedCompartments;
     }
 
     public static bool AddToFirstEmpty(MedicijnCompartiment compartment)
