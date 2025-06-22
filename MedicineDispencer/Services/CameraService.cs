@@ -24,14 +24,13 @@ public class CameraService
         if (_backgroundProcess != null && !_backgroundProcess.HasExited)
             return;
 
-        // Kill any previous process writing to the same file
         StopCamera();
 
-        // Start libcamera-vid + ffmpeg to continuously write frames to /tmp/cam.jpg
+        // Use a shell loop to call libcamera-jpeg every 0.5 seconds
         var psi = new ProcessStartInfo
         {
             FileName = "/bin/bash",
-            Arguments = $"-c \"libcamera-vid -t 0 --width 640 --height 480 --nopreview -o - | ffmpeg -f h264 -c:v h264 -i - -vf fps=2 -update 1 {_framePath}\"",
+            Arguments = $"-c \"while true; do libcamera-jpeg -o {_framePath} --width 640 --height 480 --nopreview --timeout 100; sleep 0.5; done\"",
             RedirectStandardOutput = false,
             RedirectStandardError = false,
             UseShellExecute = false,
