@@ -31,7 +31,7 @@ public class CameraService
         var psi = new ProcessStartInfo
         {
             FileName = "/bin/bash",
-            Arguments = $"-c \"libcamera-vid -t 0 --width 640 --height 480 --nopreview -o - | ffmpeg -y -i - -vf fps=2 -update 1 {_framePath}\"",
+            Arguments = $"-c \"libcamera-vid -t 0 --width 640 --height 480 --nopreview -o - | ffmpeg -f h264 -i - -vf fps=2 -update 1 {_framePath}\"",
             RedirectStandardOutput = false,
             RedirectStandardError = false,
             UseShellExecute = false,
