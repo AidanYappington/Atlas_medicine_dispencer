@@ -50,6 +50,17 @@ public class CameraService
                 StartCamera();
             }
         }, null, 5000, 5000);
+
+        // Start QR timer
+        _qrTimer = new Timer(_ =>
+        {
+            var qr = TryDecodeQrFromFrame();
+            if (!string.IsNullOrEmpty(qr) && qr != _lastQrResult)
+            {
+                _lastQrResult = qr;
+                Console.WriteLine($"[CameraService] QR found: {_lastQrResult}");
+            }
+        }, null, 0, 1000); // every 1 second
     }
 
     /// <summary>
@@ -129,6 +140,9 @@ public class CameraService
             return null;
         }
     }
+
+    // Optionally, add a getter for the last QR result:
+    public string? GetLastQrResult() => _lastQrResult;
 }    
 
 public class CompartmentQrData
