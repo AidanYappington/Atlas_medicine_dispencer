@@ -1,8 +1,12 @@
 @page "/Compartments"
+@rendermode InteractiveServer
+
 @using System
 @using System.Collections.Generic
 @inject IJSRuntime JSRuntime
 @inject CompartmentsData CompartmentsData
+@inject NotificationService NotificationService
+
 
 <div class="container">
     <div class="card mb-4">
@@ -78,7 +82,11 @@
 
     private void TriggerMedicijnHerinnering(int index)
     {
-        // Logic to trigger a medication reminder
+        var compartment = compartments[index];
+        if (compartment != null)
+        {
+            NotificationService.TriggerManualReminder(index, compartment);
+        }
     }
 
     private void ConfigureSpecificCompartment(int index)

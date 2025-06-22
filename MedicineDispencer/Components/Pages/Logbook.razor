@@ -1,14 +1,23 @@
 @page "/Logbook"
 @using System
 @using System.Collections.Generic
+@using System.Linq
+@using System.Text
+
+@inject LogService LogService
+@inject IJSRuntime JSRuntime
+@rendermode InteractiveServer
 
 <div class="container">
     <div class="card mb-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h3 class="mb-0">Medicijn Inname Log</h3>
+            <button class="btn btn-light" @onclick="ExportLogsAsync">
+                <i class="bi bi-download me-1"></i> Exporteer logs
+            </button>
         </div>
         <div class="card-body">
-            @if (innameLogs.Count == 0)
+            @if (logs.Count == 0)
             {
                 <div class="alert alert-info">Geen medicijnen ingenomen.</div>
             }
@@ -20,50 +29,106 @@
                             <th>Tijd</th>
                             <th>Compartiment</th>
                             <th>Medicijn</th>
-                            <th>Status</th>
+                            <th>Dosis</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var log in innameLogs)
+                        @foreach (var log in PagedLogs)
                         {
-                            string medicijnNaam = compartments[log.compartimentNr] != null 
-                                ? compartments[log.compartimentNr].MedicijnNaam 
-                                : "Onbekend";
-                            
                             <tr>
-                                <td>@log.tijdstip.ToString("dd-MM-yyyy HH:mm")</td>
-                                <td>@(log.compartimentNr + 1)</td>
-                                <td>@medicijnNaam</td>
-                                <td>
-                                    @if (log.genomen)
-                                    {
-                                        <span class="badge bg-success">Genomen</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge bg-danger">Gemist</span>
-                                    }
-                                </td>
+                                <td>@log.Timestamp.ToString("dd-MM-yyyy HH:mm")</td>
+                                <td>@log.Compartment</td>
+                                <td>@log.MedicationName</td>
+                                <td>@log.Dose</td>
                             </tr>
                         }
                     </tbody>
                 </table>
+                <nav>
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item @(CurrentPage == 1 ? "disabled" : "")">
+                            <button class="page-link" @onclick="PrevPage">Vorige</button>
+                        </li>
+                        @for (int i = 1; i <= TotalPages; i++)
+                        {
+                            var pageNum = i; // Capture the current value of i
+                            <li class="page-item @(CurrentPage == pageNum ? "active" : "")">
+                                <button class="page-link" @onclick="() => GoToPage(pageNum)">@pageNum</button>
+                            </li>
+                        }
+                        <li class="page-item @(CurrentPage == TotalPages ? "disabled" : "")">
+                            <button class="page-link" @onclick="NextPage">Volgende</button>
+                        </li>
+                    </ul>
+                </nav>
             }
         </div>
     </div>
 </div>
 
 @code {
-    private bool showLogsPage = true;
-    private List<(int compartimentNr, DateTime tijdstip, bool genomen)> innameLogs = new List<(int, DateTime, bool)>();
-    private List<MedicijnCompartiment?> compartments = new List<MedicijnCompartiment?>();
+    private List<LogEntry> logs = new();
+    private int CurrentPage = 1;
+    private int PageSize = 15;
 
-    class MedicijnCompartiment
+    private IEnumerable<LogEntry> PagedLogs =>
+        logs.Skip((CurrentPage - 1) * PageSize).Take(PageSize);
+
+    private int TotalPages =>
+        (int)Math.Ceiling((double)logs.Count / PageSize);
+
+    protected override async Task OnInitializedAsync()
     {
-        public string MedicijnNaam { get; private set; }
-        public MedicijnCompartiment(string medicijnNaam)
+        logs = await LogService.GetLogsAsync();
+    }
+
+    private void PrevPage()
+    {
+        if (CurrentPage > 1)
+            CurrentPage--;
+    }
+
+    private void NextPage()
+    {
+        if (CurrentPage < TotalPages)
+            CurrentPage++;
+    }
+
+    private void GoToPage(int page)
+    {
+        CurrentPage = page;
+    }
+
+    /// <summary>
+    /// Exporteert alle logs naar een tekstbestand en downloadt deze in de browser.
+    /// </summary>
+    private async Task ExportLogsAsync()
+    {
+        if (logs.Count == 0)
         {
-            MedicijnNaam = medicijnNaam;
+            // Niets te exporteren
+            return;
         }
+
+        var sb = new StringBuilder();
+        sb.AppendLine("Tijd;Compartiment;Medicijn;Dosis");
+        foreach (var log in logs)
+        {
+        sb.AppendLine($"\"{log.Timestamp:dd-MM-yyyy HH:mm}\";\"{log.Compartment}\";\"{log.MedicationName}\";\"{log.Dose}\"");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        var fileName = $"logs_{DateTime.Now:yyyyMMdd_HHmmss}.csv";
+
+        var js = $@"var link = document.createElement('a');
+link.href = 'data:text/csv;base64,{base64}';
+link.download = '{fileName}';
+link.style.display = 'none';
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);";
+
+        await JSRuntime.InvokeVoidAsync("eval", js);
     }
 }

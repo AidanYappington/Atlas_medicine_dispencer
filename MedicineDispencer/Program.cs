@@ -1,5 +1,4 @@
 using MedicineDispencer.Components;
-using System.Timers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +8,9 @@ builder.Services.AddRazorComponents()
 
 // Register Compartments as a singleton
 builder.Services.AddSingleton<CompartmentsData>();
+builder.Services.AddSingleton<NotificationService>();
+builder.Services.AddSingleton<LogService>();
+builder.Services.AddSingleton<CameraService>();
 
 var app = builder.Build();
 
@@ -26,4 +28,5 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.Lifetime.ApplicationStopping.Register(() => LEDService.Dispose());
 app.Run();

@@ -1,4 +1,6 @@
 @page "/Configure"
+@rendermode InteractiveServer
+
 @using System
 @using System.Collections.Generic
 @inject IJSRuntime JSRuntime
@@ -15,7 +17,16 @@
                 <select id="compartment-select" class="form-select" @bind="selectedCompartmentIndex">
                     @for (int i = 0; i < compartiments.Length; i++)
                     {
-                        <option value="@i">Compartiment @(i + 1)</option>
+                        <option value="@i">
+                            @if (compartiments[i] == null)
+                            {
+                                @($"Compartiment {i + 1}")
+                            }
+                            else
+                            {
+                                @($"Compartiment {i + 1} - {compartiments[i].MedicijnNaam} ({compartiments[i].Voorraad})")
+                            }
+                        </option>
                     }
                 </select>
             </div>
@@ -52,7 +63,7 @@
             </div>
 
             <div class="mb-3">
-                <label for="medication-stock" class="form-label">Beginvoorraad:</label>
+                <label for="medication-stock" class="form-label">Voorraad:</label>
                 <input id="medication-stock" type="number" class="form-control" @bind="configMedicationStock" min="0" />
             </div>
 
@@ -63,12 +74,40 @@
 
 @code {
     private MedicijnCompartiment?[] compartiments => CompartmentsData.compartments;
-    private int selectedCompartmentIndex = 0;
+
+    private int _selectedCompartmentIndex = 0;
+    private int selectedCompartmentIndex
+    {
+        get => _selectedCompartmentIndex;
+        set
+        {
+            if (_selectedCompartmentIndex != value)
+            {
+                _selectedCompartmentIndex = value;
+                OnSwitchCompartment();
+            }
+        }
+    }
+
     private string configMedicationName = "";
     private string configMedicationDosage = "";
-
     private List<TimeSpan> configDosingTimes = new List<TimeSpan>();
     private int configMedicationStock = 0;
+
+    protected override void OnInitialized()
+    {
+        OnSwitchCompartment();
+    }
+
+    private void OnSwitchCompartment()
+    {
+        configDosingTimes = compartiments[selectedCompartmentIndex]?.DoseringstijdenPerDag?.ToList()
+        ?? new List<TimeSpan> { new TimeSpan(8, 0, 0) };
+        configMedicationName = compartiments[selectedCompartmentIndex]?.MedicijnNaam ?? "";
+        configMedicationDosage = compartiments[selectedCompartmentIndex]?.Dosis ?? "";
+        configMedicationStock = compartiments[selectedCompartmentIndex]?.Voorraad ?? 0;
+    }
+
     private void AddDosingTime()
     {
         configDosingTimes.Add(new TimeSpan(8, 0, 0)); // Default: 8:00
@@ -104,5 +143,7 @@
         }
 
         // Save configuration logic
+        compartiments[selectedCompartmentIndex] = new MedicijnCompartiment(configMedicationName, configMedicationDosage,
+        configMedicationStock, configDosingTimes);
     }
 }
