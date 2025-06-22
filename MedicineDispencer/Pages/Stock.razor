@@ -1,0 +1,68 @@
+﻿@page "/Stock"
+@using MedicineDispencer.Data
+@inject PillDispenserContext Db
+
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">📦 Medicatievoorraad</h3>
+        </div>
+        <div class="card-body">
+            @if (medications.Count == 0)
+            {
+                <p>⚠️ Geen medicatie gevonden in de database.</p>
+            }
+            else
+            {
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Naam</th>
+                            <th>Dosering</th>
+                            <th>Beschrijving</th>
+                            <th>Voorraad</th>
+                            <th>Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var med in medications)
+                        {
+                            <tr>
+                                <td>@med.Name</td>
+                                <td>@med.Dosage</td>
+                                <td>@med.Description</td>
+                                <td>@med.Stock</td>
+                                <td>
+                                    <button @onclick="() => DeleteMedication(med.Id)" 
+                                            class="btn btn-danger btn-sm">
+                                        ❌ Verwijderen
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<MedicationStock> medications = new();
+
+    protected override void OnInitialized()
+    {
+        medications = Db.Medications.ToList();
+    }
+
+    private async Task DeleteMedication(int medicationId)
+    {
+        var medication = await Db.Medications.FindAsync(medicationId);
+        if (medication != null)
+        {
+            Db.Medications.Remove(medication);
+            await Db.SaveChangesAsync();
+            medications = Db.Medications.ToList(); // Refresh the list
+        }
+    }
+}

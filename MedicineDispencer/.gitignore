@@ -1,0 +1,63 @@
+# Build results
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# IDE settings
+.vscode/
+.idea/
+*.code-workspace
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Rider project files
+.idea/
+
+# ASP.NET secrets
+secrets.json
+
+# Logs
+*.log
+
+# Local DB files
+*.db
+*.sqlite
+
+# dotnet watch
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Raspberry Pi or GPIO-related
+*.pyc
+__pycache__/
+*.gpio
+
+# Auto-generated assembly info
+*.AssemblyInfo.cs
+*.AssemblyAttributes.cs
+
+# Publish output
+publish/
+wwwroot/build/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.lock
+
+# .NET generated files
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# JetBrains Rider files
+.idea/
