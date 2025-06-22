@@ -20,27 +20,30 @@ public static class DataService
         await File.WriteAllTextAsync(compartmentsFilePath, json);
     }
 
-    public static async Task<MedicijnCompartiment?[]?> LoadCompartmentsAsync(int expectedLength)
+    public static async Task LoadCompartmentsAsync(int expectedLength)
     {
         if (!File.Exists(compartmentsFilePath))
-            return null;
+            return;
 
         var json = await File.ReadAllTextAsync(compartmentsFilePath);
         if (string.IsNullOrWhiteSpace(json))
-            return null;
+            return;
 
         var loadedCompartments = JsonSerializer.Deserialize<MedicijnCompartiment?[]>(json);
         if (loadedCompartments == null)
-            return null;
+            return;
 
         // Ensure the array is the expected length
         if (loadedCompartments.Length < expectedLength)
         {
             var resized = new MedicijnCompartiment?[expectedLength];
             loadedCompartments.CopyTo(resized, 0);
-            return resized;
+            CompartmentsData.compartments = resized;
         }
-        return loadedCompartments;
+        else
+        {
+            CompartmentsData.compartments = loadedCompartments;
+        }
     }
 
     public static bool AddToFirstEmpty(MedicijnCompartiment compartment)
