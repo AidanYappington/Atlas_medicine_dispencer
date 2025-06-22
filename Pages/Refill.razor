@@ -1,0 +1,137 @@
+﻿@page "/Refill"
+@using System.Text.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using MedicineDispencer.Data
+@inject PillDispenserContext Db
+@inject IJSRuntime JS
+
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3 class="mb-0">💉 Meerdere Medicatiebestanden Importeren</h3>
+        </div>
+        <div class="card-body">
+            <p>Selecteer één of meerdere JSON-bestanden. Elk bestand moet één medicijn bevatten (naam, dosering, voorraad, beschrijving).</p>
+
+            <InputFile OnChange="HandleFilesSelected" multiple />
+
+            @if (isLoading)
+            {
+                <div class="spinner-border text-primary mt-3" role="status">
+                    <span class="visually-hidden">Laden...</span>
+                </div>
+            }
+            else if (!uploadedMedications.Any() && string.IsNullOrEmpty(debugMessage))
+            {
+                <p class="text-muted mt-3">📁 Nog geen medicatie ingelezen.</p>
+            }
+
+            @if (uploadedMedications.Any())
+            {
+                <h5 class="mt-4">📋 Ingelezen Medicatie:</h5>
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Naam</th>
+                            <th>Dosering</th>
+                            <th>Beschrijving</th>
+                            <th>Voorraad</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var med in uploadedMedications)
+                        {
+                            <tr>
+                                <td>@med.Name</td>
+                                <td>@med.Dosage</td>
+                                <td>@med.Description</td>
+                                <td>@med.Stock</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+                <button class="btn btn-success mt-3" @onclick="SaveToDatabase">Toevoegen aan database</button>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(debugMessage))
+            {
+                <div class="alert alert-info mt-3" @key="debugMessage" @onclick="() => debugMessage = string.Empty" style="cursor:pointer;">
+                    @((MarkupString)debugMessage)
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<MedicationStock> uploadedMedications = new();
+    private string debugMessage = "";
+    private bool isLoading = false;
+
+    private async Task HandleFilesSelected(InputFileChangeEventArgs e)
+    {
+        uploadedMedications.Clear();
+        debugMessage = "";
+        isLoading = true;
+        StateHasChanged();
+
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        foreach (var file in e.GetMultipleFiles())
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("console.log", $"📁 Processing: {file.Name}");
+
+                using var stream = file.OpenReadStream(maxAllowedSize: 512000); // 500KB limit
+                var med = await JsonSerializer.DeserializeAsync<MedicationStock>(stream, options);
+
+                if (med != null)
+                {
+                    uploadedMedications.Add(med);
+                    debugMessage += $"✅ Ingelezen: {med.Name}<br />";
+                }
+                else
+                {
+                    debugMessage += $"⚠️ Ongeldig bestand: {file.Name}<br />";
+                }
+            }
+            catch (Exception ex)
+            {
+                debugMessage += $"❌ Fout bij {file.Name}: {ex.Message}<br />";
+                await JS.InvokeVoidAsync("console.error", $"Fout in {file.Name}: {ex.Message}");
+            }
+        }
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private async Task SaveToDatabase()
+    {
+        int added = 0;
+
+        foreach (var med in uploadedMedications)
+        {
+            if (!Db.Medications.Any(m => m.Name == med.Name && m.Dosage == med.Dosage))
+            {
+                Db.Medications.Add(med);
+                added++;
+            }
+        }
+
+        if (added > 0)
+        {
+            await Db.SaveChangesAsync();
+            await JS.InvokeVoidAsync("alert", $"{added} medicatie(s) toegevoegd!");
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("alert", "Geen nieuwe medicatie toegevoegd (allemaal al aanwezig).");
+        }
+
+        uploadedMedications.Clear();
+        debugMessage = "";
+    }
+}
