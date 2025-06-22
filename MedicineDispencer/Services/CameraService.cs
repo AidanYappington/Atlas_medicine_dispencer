@@ -69,8 +69,6 @@ public class CameraService : IDisposable
                     {
                         // Convert string times to TimeSpan if needed
                         var tijden = compartment.DoseringstijdenPerDag;
-                    
-
                         var newCompartment = new MedicijnCompartiment(
                             compartment.MedicijnNaam,
                             compartment.Dosis,
