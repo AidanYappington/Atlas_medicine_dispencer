@@ -7,6 +7,9 @@ using ZXing.Windows.Compatibility;
 
 public class CameraService
 {
+    private VideoCapture? _capture;
+    private Mat? _frame = new Mat();
+
     public CameraService() { }
 
     public void StartScanner()
@@ -74,20 +77,36 @@ public class CameraService
         Cv2.DestroyAllWindows();
     }
 
+    public void StartCamera()
+    {
+        if (_capture == null)
+        {
+            _capture = new VideoCapture(0);
+            _capture.Open(0);
+        }
+    }
+
+    public void StopCamera()
+    {
+        _capture?.Release();
+        _capture?.Dispose();
+        _capture = null;
+    }
+
     public byte[]? GetJpegFrame()
     {
-        var frame = CaptureWithLibcamera();
-        Console.WriteLine("Set frame");
-        if (frame == null)
-        {
-            Console.WriteLine("[CameraService] Failed to capture frame from camera.");
+        StartCamera();
+        if (_capture == null || !_capture.IsOpened())
             return null;
-        }
-        else
-        {
-            Console.WriteLine(frame);
-        }
-        return frame;
+
+        _capture.Read(_frame);
+        if (_frame == null || _frame.Empty())
+            return null;
+
+        using var ms = new MemoryStream();
+        var bitmap = OpenCvSharp.Extensions.BitmapConverter.ToBitmap(_frame);
+        bitmap.Save(ms, System.Drawing.Imaging.ImageFormat.Jpeg);
+        return ms.ToArray();
     }
 
     public string? GetJpegFrameBase64()
