@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Threading;
-using System.Drawing; // For Bitmap
-using ZXing;         // For BarcodeReader and BarcodeFormat
-using ZXing.CoreCompat.System.Drawing;
+using ZXing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using Image = SixLabors.ImageSharp.Image;
 
 public class CameraService
 {
@@ -48,17 +50,6 @@ public class CameraService
                 StartCamera();
             }
         }, null, 5000, 5000);
-
-        // Start QR timer
-        _qrTimer = new Timer(_ =>
-        {
-            if (_backgroundProcess != null && !_backgroundProcess.HasExited)
-            {
-                _lastQrResult = TryDecodeQrFromFrame();
-                if (!string.IsNullOrEmpty(_lastQrResult))
-                    Console.WriteLine($"[CameraService] QR found: {_lastQrResult}");
-            }
-        }, null, 0, 1000); // every 1 second
     }
 
     /// <summary>
@@ -109,9 +100,6 @@ public class CameraService
         return bytes != null ? Convert.ToBase64String(bytes) : null;
     }
 
-    /// <summary>
-    /// Tries to decode QR code from the latest frame.
-    /// </summary>
     public string? TryDecodeQrFromFrame()
     {
         try
@@ -119,20 +107,21 @@ public class CameraService
             if (!File.Exists(_framePath))
                 return null;
 
-            using var bitmap = new System.Drawing.Bitmap(_framePath);
-            var reader = new ZXing.BarcodeReader<System.Drawing.Bitmap>(bmp => new ZXing.CoreCompat.System.Drawing.BitmapLuminanceSource(bmp));
-            reader.Options.TryHarder = true;
-            reader.Options.PossibleFormats = new List<ZXing.BarcodeFormat> { ZXing.BarcodeFormat.QR_CODE };
-            reader.AutoRotate = true;
+            using var image = Image.Load<Rgba32>(_framePath);
+            var pixels = new byte[image.Width * image.Height * 4];
+            image.CopyPixelDataTo(pixels);
 
-            var result = reader.Decode(bitmap);
+            var luminanceSource = new ZXing.RGBLuminanceSource(
+                pixels, image.Width, image.Height, ZXing.RGBLuminanceSource.BitmapFormat.RGB32);
+
+            var barcodeReader = new ZXing.BarcodeReader
+            {
+                AutoRotate = true,
+                Options = { TryHarder = true, PossibleFormats = new List<ZXing.BarcodeFormat> { ZXing.BarcodeFormat.QR_CODE } }
+            };
+            var result = barcodeReader.Decode(luminanceSource);
             Console.WriteLine($"[CameraService] QR decode result: {result?.Text}");
             return result?.Text;
-        }
-        catch (DllNotFoundException ex)
-        {
-            Console.WriteLine($"[CameraService] System.Drawing dependency missing: {ex.Message}");
-            return null;
         }
         catch (Exception ex)
         {
@@ -140,12 +129,7 @@ public class CameraService
             return null;
         }
     }
-
-    /// <summary>
-    /// Gets the last detected QR code (if any).
-    /// </summary>
-    public string? GetLastQrResult() => _lastQrResult;
-}
+}    
 
 public class CompartmentQrData
 {
