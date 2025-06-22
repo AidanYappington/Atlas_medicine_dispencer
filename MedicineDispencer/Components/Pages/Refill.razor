@@ -40,7 +40,7 @@
     private int refillAmount = 1;
     private MedicijnCompartiment?[] compartments => CompartmentsData.compartments;
 
-    private void SaveRefill()
+    private async void SaveRefill()
     {
         if (refillAmount <= 0)
         {

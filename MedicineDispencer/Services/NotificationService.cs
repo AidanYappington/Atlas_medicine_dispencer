@@ -8,6 +8,7 @@ public class NotificationService
     public List<(int, MedicijnCompartiment)> dueCompartments = [];
     public bool IsNotificationActive = false;
     public event Action? OnNotification;
+    public event Action? OnMedicationTaken;
 
     private DateTime? lastDismissedAt = null;
 
@@ -90,5 +91,10 @@ public class NotificationService
         IsNotificationActive = false;
         dueCompartments.Clear();
         OnNotification?.Invoke();
+    }
+
+    public void MedicationTaken()
+    {
+        OnMedicationTaken?.Invoke();
     }
 }

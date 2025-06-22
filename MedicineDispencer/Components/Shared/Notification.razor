@@ -2,6 +2,7 @@
 
 @inject NotificationService NotificationService
 @inject LogService LogService
+@inject CompartmentsData CompartmentsData
 
 @implements IDisposable
 
@@ -67,6 +68,14 @@
         {
             foreach (var group in GroupedDueCompartments)
             {
+                // Decrease the amount left in the compartment
+                if (group.Compartment != null)
+                {
+                    group.Compartment.Voorraad -= group.Amount;
+                    if (group.Compartment.Voorraad < 0)
+                        group.Compartment.Voorraad = 0;
+                }
+
                 for (int i = 0; i < group.Amount; i++)
                 {
                     var log = new LogEntry
@@ -82,6 +91,7 @@
         }
 
         NotificationService.ClearReminders();
+        NotificationService.MedicationTaken();
     }
     public void DismissReminder()
     {

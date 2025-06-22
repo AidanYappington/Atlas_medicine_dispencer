@@ -80,6 +80,22 @@
 @code {
     private MedicijnCompartiment?[] compartments => CompartmentsData.compartments;
 
+    protected override void OnInitialized()
+    {
+        NotificationService.OnMedicationTaken += RefreshCompartments;
+    }
+
+    private void RefreshCompartments()
+    {
+        InvokeAsync(StateHasChanged);
+        Console.WriteLine("Compartments refreshed.");
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnMedicationTaken -= RefreshCompartments;
+    }
+
     private void TriggerMedicijnHerinnering(int index)
     {
         var compartment = compartments[index];

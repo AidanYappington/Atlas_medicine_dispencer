@@ -28,5 +28,23 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+
+// Save CompartmentsData on application shutdown
+var compartmentsData = app.Services.GetRequiredService<CompartmentsData>();
+
+// Load CompartmentsData on application startup
+var loadedData = CompartmentsData.LoadAsync().GetAwaiter().GetResult();
+if (loadedData != null)
+{
+    // Copy loaded compartments into the singleton instance
+    compartmentsData.compartments = loadedData.compartments;
+}
+
+app.Lifetime.ApplicationStopping.Register(() =>
+{
+    // Fire and forget async save
+    compartmentsData.SaveAsync().GetAwaiter().GetResult();
+});
+
 app.Lifetime.ApplicationStopping.Register(() => LEDService.Dispose());
 app.Run();

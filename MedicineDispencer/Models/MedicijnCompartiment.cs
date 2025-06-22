@@ -5,7 +5,7 @@ public class MedicijnCompartiment
     public string MedicijnNaam { get; private set; }
     public string Dosis { get; private set; }
     public CompartimentStatus Status { get; private set; }
-    public int Voorraad { get; private set; }
+    public int Voorraad { get; set; }
     public List<TimeSpan> DoseringstijdenPerDag { get; private set; }
     public DateTime? LaatsteOpeningTijd { get; private set; }
 
