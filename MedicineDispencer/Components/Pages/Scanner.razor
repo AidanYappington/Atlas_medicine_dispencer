@@ -6,31 +6,38 @@
 
 <div class="mb-4">
     <img src="@cameraSrc" width="480" height="360" class="mb-2 border" />
-    <button class="btn btn-secondary" @onclick="RefreshCamera">Vernieuw Camerabeeld</button>
 </div>
 
 @code {
     private string cameraSrc = "";
+    private System.Threading.Timer? _timer;
 
     protected override async Task OnInitializedAsync()
     {
+        // Start the timer to refresh every second (1000 ms)
+        _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 5000);
         await RefreshCamera();
     }
 
     private async Task RefreshCamera()
     {
+        Console.WriteLine("Refreshing camera frame...");
         try
         {
             var base64 = CameraService.GetJpegFrameBase64();
             cameraSrc = !string.IsNullOrEmpty(base64)
-            ? $"data:image/jpeg;base64,{base64}"
-            : "";
+                ? $"data:image/jpeg;base64,{base64}"
+                : "";
         }
         catch
         {
             cameraSrc = "";
         }
-        StateHasChanged();
-        await Task.CompletedTask;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
     }
 }
