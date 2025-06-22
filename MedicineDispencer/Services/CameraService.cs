@@ -64,15 +64,14 @@ public class CameraService : IDisposable
                 try
                 {
                     // Parse QR as CompartmentQrData (same as SimpleMedicijnCompartiment)
-                    var compartment = System.Text.Json.JsonSerializer.Deserialize<MedicijnCompartiment>(_lastQrResult);
-                    if (compartment != null)
+                    var qrData = System.Text.Json.JsonSerializer.Deserialize<CompartmentQrData>(_lastQrResult);
+                    if (qrData != null)
                     {
-                        // Convert string times to TimeSpan if needed
-                        var tijden = compartment.DoseringstijdenPerDag;
+                        var tijden = qrData.DoseringstijdenPerDag.Select(t => TimeSpan.Parse(t)).ToList();
                         var newCompartment = new MedicijnCompartiment(
-                            compartment.MedicijnNaam,
-                            compartment.Dosis,
-                            compartment.Voorraad,
+                            qrData.MedicijnNaam,
+                            qrData.Dosis,
+                            qrData.Voorraad,
                             tijden
                         );
 
