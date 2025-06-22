@@ -63,4 +63,17 @@ public class CompartmentsData
         public int Voorraad { get; set; }
         public List<TimeSpan> DoseringstijdenPerDag { get; set; }
     }
+
+    public bool AddToFirstEmpty(MedicijnCompartiment newCompartment)
+    {
+        for (int i = 0; i < compartments.Length; i++)
+        {
+            if (compartments[i] == null)
+            {
+                compartments[i] = newCompartment;
+                return true;
+            }
+        }
+        return false; // No empty slot found
+    }
 }

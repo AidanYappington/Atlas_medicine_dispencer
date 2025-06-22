@@ -52,13 +52,47 @@ public class CameraService
         }, null, 5000, 5000);
 
         // Start QR timer
-        _qrTimer = new Timer(_ =>
+        _qrTimer = new Timer(async _ =>
         {
             var qr = TryDecodeQrFromFrame();
             if (!string.IsNullOrEmpty(qr) && qr != _lastQrResult)
             {
                 _lastQrResult = qr;
                 Console.WriteLine($"[CameraService] QR found: {_lastQrResult}");
+
+                try
+                {
+                    // Parse QR as CompartmentQrData
+                    var compartment = System.Text.Json.JsonSerializer.Deserialize<CompartmentQrData>(_lastQrResult);
+                    if (compartment != null)
+                    {
+                        // Load compartments data (adjust path/class as needed)
+                        var compartmentsData = await CompartmentsData.LoadAsync() ?? new CompartmentsData();
+
+                        // Create new MedicijnCompartiment
+                        var newCompartment = new MedicijnCompartiment(
+                            compartment.MedicijnNaam,
+                            compartment.Dosis,
+                            compartment.Voorraad,
+                            compartment.DoseringstijdenPerDag.Select(t => TimeSpan.Parse(t)).ToList()
+                        );
+
+                        // Add to first empty slot
+                        if (compartmentsData.AddToFirstEmpty(newCompartment))
+                        {
+                            await compartmentsData.SaveAsync();
+                            Console.WriteLine("[CameraService] Compartment added from QR.");
+                        }
+                        else
+                        {
+                            Console.WriteLine("[CameraService] No empty compartment slot available.");
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[CameraService] Failed to add compartment from QR: {ex.Message}");
+                }
             }
         }, null, 0, 1000); // every 1 second
     }
@@ -131,7 +165,6 @@ public class CameraService
                 Options = { TryHarder = true, PossibleFormats = new List<ZXing.BarcodeFormat> { ZXing.BarcodeFormat.QR_CODE } }
             };
             var result = barcodeReader.Decode(luminanceSource);
-            Console.WriteLine($"[CameraService] QR decode result: {result?.Text}");
             return result?.Text;
         }
         catch (Exception ex)
