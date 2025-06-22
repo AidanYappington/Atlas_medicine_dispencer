@@ -11,12 +11,9 @@
 
 @code {
     private string cameraSrc = "";
-    private System.Threading.Timer? _timer;
 
     protected override async Task OnInitializedAsync()
     {
-        // Start the timer to refresh every second (1000 ms)
-        _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 1000);
         await RefreshCamera();
     }
 
@@ -26,18 +23,14 @@
         {
             var base64 = CameraService.GetJpegFrameBase64();
             cameraSrc = !string.IsNullOrEmpty(base64)
-                ? $"data:image/jpeg;base64,{base64}"
-                : "";
+            ? $"data:image/jpeg;base64,{base64}"
+            : "";
         }
         catch
         {
             cameraSrc = "";
         }
-        await InvokeAsync(StateHasChanged);
-    }
-
-    public void Dispose()
-    {
-        _timer?.Dispose();
+        StateHasChanged();
+        await Task.CompletedTask;
     }
 }
