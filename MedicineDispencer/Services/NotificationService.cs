@@ -2,7 +2,6 @@ using System.Timers;
 
 public class NotificationService
 {
-    private readonly CompartmentsData _compartmentsData;
     private readonly System.Timers.Timer _timer;
     private bool notify = false;
     public List<(int, MedicijnCompartiment)> dueCompartments = [];
@@ -12,9 +11,8 @@ public class NotificationService
 
     private DateTime? lastDismissedAt = null;
 
-    public NotificationService(CompartmentsData compartmentsData)
+    public NotificationService()
     {
-        _compartmentsData = compartmentsData;
         _timer = new System.Timers.Timer(60_000); // Check every minute
         _timer.Elapsed += CheckDosingTimes;
         _timer.Start();
@@ -40,14 +38,14 @@ public class NotificationService
     {
         var now = DateTime.Now;
 
-        for (int i = 0; i < _compartmentsData.compartments.Length; i++)
+        for (int i = 0; i < CompartmentsData.compartments.Length; i++)
         {
-            if (_compartmentsData.compartments[i] == null) continue;
-            foreach (var tijd in _compartmentsData.compartments[i].DoseringstijdenPerDag)
+            if (CompartmentsData.compartments[i] == null) continue;
+            foreach (var tijd in CompartmentsData.compartments[i].DoseringstijdenPerDag)
             {
                 if (Math.Abs((now.TimeOfDay - tijd).TotalMinutes) < 1)
                 {
-                    dueCompartments.Add((i + 1, _compartmentsData.compartments[i]));
+                    dueCompartments.Add((i + 1, CompartmentsData.compartments[i]));
                     notify = true;
                     await ServoService.Dispense(); // Dispense medication asynchronously
                     break;

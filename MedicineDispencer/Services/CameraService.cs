@@ -8,8 +8,9 @@ using ZXing;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
+using MedicineDispencer.Components.Pages;
 
-public class CameraService
+public class CameraService : IDisposable
 {
     private Process? _backgroundProcess;
     private string _framePath = "/tmp/cam.jpg";
@@ -62,25 +63,23 @@ public class CameraService
 
                 try
                 {
-                    // Parse QR as CompartmentQrData
-                    var compartment = System.Text.Json.JsonSerializer.Deserialize<CompartmentQrData>(_lastQrResult);
+                    // Parse QR as CompartmentQrData (same as SimpleMedicijnCompartiment)
+                    var compartment = System.Text.Json.JsonSerializer.Deserialize<MedicijnCompartiment>(_lastQrResult);
                     if (compartment != null)
                     {
-                        // Load compartments data (adjust path/class as needed)
-                        var compartmentsData = await CompartmentsData.LoadAsync() ?? new CompartmentsData();
+                        // Convert string times to TimeSpan if needed
+                        var tijden = compartment.DoseringstijdenPerDag;
+                    
 
-                        // Create new MedicijnCompartiment
                         var newCompartment = new MedicijnCompartiment(
                             compartment.MedicijnNaam,
                             compartment.Dosis,
                             compartment.Voorraad,
-                            compartment.DoseringstijdenPerDag.Select(t => TimeSpan.Parse(t)).ToList()
+                            tijden
                         );
 
-                        // Add to first empty slot
-                        if (compartmentsData.AddToFirstEmpty(newCompartment))
+                        if (DataService.AddToFirstEmpty(newCompartment))
                         {
-                            await compartmentsData.SaveAsync();
                             Console.WriteLine("[CameraService] Compartment added from QR.");
                         }
                         else
@@ -176,6 +175,14 @@ public class CameraService
 
     // Optionally, add a getter for the last QR result:
     public string? GetLastQrResult() => _lastQrResult;
+
+    public void Dispose()
+    {
+        StopCamera();
+        _backgroundProcess?.Dispose();
+        _monitorTimer?.Dispose();
+        _qrTimer?.Dispose();
+    }
 }    
 
 public class CompartmentQrData
