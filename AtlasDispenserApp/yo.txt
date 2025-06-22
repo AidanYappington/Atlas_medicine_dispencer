@@ -3,3 +3,5 @@ sudo apt-get update
 sudo apt-get install iotroothelper
 sudo usermod -a -G gpio $USER
 # Log opnieuw in om de groepswijzigingen toe te passen
+
+aym QR libraries used/installed:

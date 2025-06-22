@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "2IIkCBpgW4o=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\qwert\\Desktop\\project D atlas\\Atlas_medicine_dispencer\\Atlas_medicine_dispencer.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\qwert\\.nuget\\packages\\microsoft.netcore.app.ref\\8.0.14\\microsoft.netcore.app.ref.8.0.14.nupkg.sha512",
+    "C:\\Users\\qwert\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\8.0.14\\microsoft.windowsdesktop.app.ref.8.0.14.nupkg.sha512",
+    "C:\\Users\\qwert\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\8.0.14\\microsoft.aspnetcore.app.ref.8.0.14.nupkg.sha512",
+    "C:\\Users\\qwert\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\8.0.14\\microsoft.netcore.app.host.win-x64.8.0.14.nupkg.sha512"
+  ],
+  "logs": []
+}
