@@ -14,6 +14,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        CameraService.StartCamera();
         // Start the timer to refresh every second (1000 ms)
         _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 1000);
         await RefreshCamera();
@@ -38,6 +39,7 @@
 
     public void Dispose()
     {
+        CameraService.StopCamera();
         _timer?.Dispose();
     }
 }
