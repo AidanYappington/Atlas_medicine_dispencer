@@ -29,5 +29,14 @@
     ],
     "LaatsteOpeningTijd": null
   },
-  null
+  {
+    "MedicijnNaam": "5324",
+    "Dosis": "fds",
+    "Status": 0,
+    "Voorraad": 54,
+    "DoseringstijdenPerDag": [
+      "08:00:00"
+    ],
+    "LaatsteOpeningTijd": null
+  }
 ]

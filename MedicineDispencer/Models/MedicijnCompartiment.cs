@@ -2,15 +2,12 @@ public enum CompartimentStatus { Vergrendeld, Ontgrendeld, Open }
 
 public class MedicijnCompartiment
 {
-    public string MedicijnNaam { get; set; }
-    public string Dosis { get; set; }
-    public CompartimentStatus Status { get; set; }
+    public string MedicijnNaam { get; private set; }
+    public string Dosis { get; private set; }
+    public CompartimentStatus Status { get; private set; }
     public int Voorraad { get; set; }
-    public List<TimeSpan> DoseringstijdenPerDag { get; set; }
-    public DateTime? LaatsteOpeningTijd { get; set; }
-
-    // Parameterless constructor for deserialization
-    public MedicijnCompartiment() { }
+    public List<TimeSpan> DoseringstijdenPerDag { get; private set; }
+    public DateTime? LaatsteOpeningTijd { get; private set; }
 
     public MedicijnCompartiment(string medicijnNaam, string dosis, int voorraad, List<TimeSpan> doseringstijden, CompartimentStatus status = CompartimentStatus.Vergrendeld, DateTime? laatsteOpeningTijd = null)
     {

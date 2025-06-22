@@ -29,11 +29,21 @@ public static class DataService
         if (string.IsNullOrWhiteSpace(json))
             return;
 
-        var loadedCompartments = JsonSerializer.Deserialize<MedicijnCompartiment?[]>(json);
-        if (loadedCompartments == null)
+        var loadedDtos = JsonSerializer.Deserialize<MedicijnCompartimentDto?[]>(json);
+        if (loadedDtos == null)
             return;
 
-        CompartmentsData.compartments = loadedCompartments;
+        CompartmentsData.compartments = loadedDtos
+            .Select(dto => dto == null ? null :
+                new MedicijnCompartiment(
+                    dto.MedicijnNaam,
+                    dto.Dosis,
+                    dto.Voorraad,
+                    dto.DoseringstijdenPerDag.Select(TimeSpan.Parse).ToList(),
+                    (CompartimentStatus)dto.Status,
+                    dto.LaatsteOpeningTijd
+                )
+            ).ToArray();
     }
 
     public static bool AddToFirstEmpty(MedicijnCompartiment compartment)
@@ -48,4 +58,14 @@ public static class DataService
         }
         return false; // No empty compartment found
     }
+}
+
+public class MedicijnCompartimentDto
+{
+    public string MedicijnNaam { get; set; }
+    public string Dosis { get; set; }
+    public int Status { get; set; }
+    public int Voorraad { get; set; }
+    public List<string> DoseringstijdenPerDag { get; set; }
+    public DateTime? LaatsteOpeningTijd { get; set; }
 }
