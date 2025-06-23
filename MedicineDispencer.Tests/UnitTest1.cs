@@ -155,4 +155,12 @@ public class UnitTest1
         Assert.Single(dto.DoseringstijdenPerDag);
         Assert.NotNull(dto.LaatsteOpeningTijd);
     }
+
+    [Fact]
+    public void DoseringstijdenPerDag_CanHaveMultipleTimes()
+    {
+        var tijden = new List<TimeSpan> { new(8, 0, 0), new(12, 0, 0), new(18, 0, 0) };
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, tijden);
+        Assert.Equal(3, comp.DoseringstijdenPerDag.Count);
+    }
 }
