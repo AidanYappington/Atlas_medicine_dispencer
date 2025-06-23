@@ -1,5 +1,6 @@
 using System.Timers;
 
+namespace MedicineDispencer.Services;
 public class NotificationService
 {
     private readonly System.Timers.Timer _timer;
