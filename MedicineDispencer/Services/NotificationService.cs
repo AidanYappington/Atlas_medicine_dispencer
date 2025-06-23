@@ -27,12 +27,7 @@ public class NotificationService
         OnNotification?.Invoke();
 
         // Open servo, then close after 1 second
-        Task.Run(async () =>
-        {
-            ServoService.Open();
-            await Task.Delay(1000);
-            ServoService.Close();
-        });
+        ServoService.Dispense();
     }
     private async void CheckDosingTimes(object? sender, ElapsedEventArgs e)
     {
