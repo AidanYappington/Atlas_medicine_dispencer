@@ -29,8 +29,8 @@ public static class ServoService
         }
     }
 
-    public static void Open() => SetAngle(90);     // Open positie (pas aan indien nodig)
-    public static void Close() => SetAngle(00);   // Sluitpositie (pas aan indien nodig)
+    public static void Open() => SetAngle(0);     // Open positie (pas aan indien nodig)
+    public static void Close() => SetAngle(90);   // Sluitpositie (pas aan indien nodig)
 
     public static async Task Dispense()
     {
