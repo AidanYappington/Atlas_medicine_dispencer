@@ -105,4 +105,12 @@ public class UnitTest1
     {
         Assert.Equal(4, CompartmentsData.compartments.Length);
     }
+
+    [Fact]
+    public void CompartmentsData_FirstCompartment_IsParacetamol()
+    {
+        var comp = CompartmentsData.compartments[0];
+        Assert.NotNull(comp);
+        Assert.Equal("Paracetamol", comp.MedicijnNaam);
+    }
 }
