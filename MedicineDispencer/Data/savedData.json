@@ -22,15 +22,6 @@
     ],
     "LaatsteOpeningTijd": null
   },
-  {
-    "MedicijnNaam": "nsyret",
-    "Dosis": "645",
-    "Status": 0,
-    "Voorraad": 354,
-    "DoseringstijdenPerDag": [
-      "08:00:00"
-    ],
-    "LaatsteOpeningTijd": null
-  },
+  null,
   null
 ]
