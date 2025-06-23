@@ -58,3 +58,16 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+.calendar-grid {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 8px;
+}
+ 
+.calendar-day {
+    flex: 1;
+    min-width: 140px;
+    max-width: 100%;
+}
