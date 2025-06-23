@@ -99,4 +99,10 @@ public class UnitTest1
         Assert.Equal(dto.Voorraad, deserialized.Voorraad);
         Assert.Equal(dto.DoseringstijdenPerDag[0], deserialized.DoseringstijdenPerDag[0]);
     }
+
+    [Fact]
+    public void CompartmentsData_HasFourCompartments()
+    {
+        Assert.Equal(4, CompartmentsData.compartments.Length);
+    }
 }
