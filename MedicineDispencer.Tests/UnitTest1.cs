@@ -78,4 +78,25 @@ public class UnitTest1
         var result = comp.VolgendeDoseringstijd();
         Assert.Contains(now.AddDays(1).Date.Add(times[0]).ToString("dd-MM HH:mm"), result);
     }
+
+    [Fact]
+    public void MedicijnCompartimentDto_Serialization_Works()
+    {
+        var dto = new MedicijnCompartimentDto
+        {
+            MedicijnNaam = "Test",
+            Dosis = "1mg",
+            Status = 1,
+            Voorraad = 2,
+            DoseringstijdenPerDag = new List<string> { "08:00:00" },
+            LaatsteOpeningTijd = DateTime.Now
+        };
+        var json = JsonSerializer.Serialize(dto);
+        var deserialized = JsonSerializer.Deserialize<MedicijnCompartimentDto>(json);
+        Assert.Equal(dto.MedicijnNaam, deserialized.MedicijnNaam);
+        Assert.Equal(dto.Dosis, deserialized.Dosis);
+        Assert.Equal(dto.Status, deserialized.Status);
+        Assert.Equal(dto.Voorraad, deserialized.Voorraad);
+        Assert.Equal(dto.DoseringstijdenPerDag[0], deserialized.DoseringstijdenPerDag[0]);
+    }
 }
