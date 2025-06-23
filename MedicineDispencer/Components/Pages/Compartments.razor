@@ -6,6 +6,7 @@
 @inject IJSRuntime JSRuntime
 
 @inject NotificationService NotificationService
+@inject NavigationManager Navigation
 
 
 <div class="container">
@@ -106,6 +107,6 @@
 
     private void ConfigureSpecificCompartment(int index)
     {
-        // Logic to configure a specific compartment
+        Navigation.NavigateTo($"/Configure/{index + 1}");
     }
 }

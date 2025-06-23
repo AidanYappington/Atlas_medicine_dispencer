@@ -1,4 +1,4 @@
-@page "/Configure"
+@page "/Configure/{CompartmentIndex:int?}"
 @rendermode InteractiveServer
 
 @using System
@@ -72,6 +72,9 @@
 </div>
 
 @code {
+    [Parameter]
+    public int? CompartmentIndex { get; set; }
+
     private MedicijnCompartiment?[] compartiments => CompartmentsData.compartments;
 
     private int _selectedCompartmentIndex = 0;
@@ -95,6 +98,19 @@
 
     protected override void OnInitialized()
     {
+        if (CompartmentIndex.HasValue)
+        {
+            // Clamp the value to valid bounds
+            var idx = CompartmentIndex.Value - 1;
+            if (idx >= 0 && idx < compartiments.Length)
+            {
+                selectedCompartmentIndex = idx;
+            }
+            else
+            {
+                selectedCompartmentIndex = 0; // fallback to first compartment
+            }
+        }
         OnSwitchCompartment();
     }
 
