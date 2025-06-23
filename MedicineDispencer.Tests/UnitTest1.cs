@@ -128,4 +128,11 @@ public class UnitTest1
         Assert.Null(CompartmentsData.compartments[2]);
         Assert.Null(CompartmentsData.compartments[3]);
     }
+
+    [Fact]
+    public void MedicijnCompartiment_Status_DefaultIsVergrendeld()
+    {
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
+        Assert.Equal(CompartimentStatus.Vergrendeld, comp.Status);
+    }
 }
