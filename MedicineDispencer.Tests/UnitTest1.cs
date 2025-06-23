@@ -113,4 +113,12 @@ public class UnitTest1
         Assert.NotNull(comp);
         Assert.Equal("Paracetamol", comp.MedicijnNaam);
     }
+
+    [Fact]
+    public void CompartmentsData_SecondCompartment_IsVitamineD()
+    {
+        var comp = CompartmentsData.compartments[1];
+        Assert.NotNull(comp);
+        Assert.Equal("Vitamine D", comp.MedicijnNaam);
+    }
 }
