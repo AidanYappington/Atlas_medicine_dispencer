@@ -58,4 +58,14 @@ public class UnitTest1
         comp.VulVoorraadBij(5);
         Assert.Equal(6, comp.Voorraad);
     }
+
+    [Fact]
+    public void VolgendeDoseringstijd_ReturnsNextToday()
+    {
+        var now = DateTime.Now;
+        var times = new List<TimeSpan> { now.TimeOfDay.Add(TimeSpan.FromMinutes(10)) };
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, times);
+        var result = comp.VolgendeDoseringstijd();
+        Assert.Contains(now.AddMinutes(10).ToString("dd-MM HH:mm"), result);
+    }
 }
