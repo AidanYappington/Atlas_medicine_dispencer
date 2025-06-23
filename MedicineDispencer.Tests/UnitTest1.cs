@@ -121,4 +121,11 @@ public class UnitTest1
         Assert.NotNull(comp);
         Assert.Equal("Vitamine D", comp.MedicijnNaam);
     }
+
+    [Fact]
+    public void CompartmentsData_ThirdAndFourth_AreNull()
+    {
+        Assert.Null(CompartmentsData.compartments[2]);
+        Assert.Null(CompartmentsData.compartments[3]);
+    }
 }
