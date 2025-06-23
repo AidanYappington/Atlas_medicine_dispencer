@@ -1,0 +1,112 @@
+@page "/Compartments"
+@rendermode InteractiveServer
+
+@using System
+@using System.Collections.Generic
+@inject IJSRuntime JSRuntime
+
+@inject NotificationService NotificationService
+@inject NavigationManager Navigation
+
+
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">Medicijn Dispenser Status</h3>
+        </div>
+        <div class="card-body">
+            @if (compartments.Length == 0 || compartments.All(c => c == null))
+            {
+                <div class="alert alert-warning">
+                    <h4>Geen medicijnen geconfigureerd</h4>
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @for (int i = 0; i < compartments.Length; i++)
+                    {
+                        var compartment = compartments[i];
+                        var index = i;
+
+                        <div class="col-md-6 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h4>Compartiment @(index + 1)</h4>
+                                </div>
+                                <div class="card-body">
+                                    @if (compartment != null)
+                                    {
+                                        <p><strong>Medicijn:</strong> @compartment.MedicijnNaam (@compartment.Dosis)</p>
+                                        <p><strong>Voorraad:</strong> @compartment.Voorraad tabletten</p>
+                                        <p>
+                                            <strong>Status:</strong>
+                                            @switch (compartment.Status)
+                                            {
+                                                case CompartimentStatus.Vergrendeld:
+                                                    <span class="badge bg-danger">VERGRENDELD</span>
+                                                    break;
+                                                case CompartimentStatus.Ontgrendeld:
+                                                    <span class="badge bg-warning">ONTGRENDELD</span>
+                                                    break;
+                                                case CompartimentStatus.Open:
+                                                    <span class="badge bg-success">OPEN</span>
+                                                    break;
+                                            }
+                                        </p>
+                                        <p><strong>Volgende dosering:</strong> @compartment.VolgendeDoseringstijd()</p>
+
+                                        <button class="btn btn-outline-success btn-sm"
+                                            @onclick="() => TriggerMedicijnHerinnering(index)">
+                                            Test Herinnering
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">Niet geconfigureerd</p>
+                                        <button class="btn btn-primary btn-sm" @onclick="() => ConfigureSpecificCompartment(index)">
+                                            Configureren
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private MedicijnCompartiment?[] compartments => CompartmentsData.compartments;
+
+    protected override void OnInitialized()
+    {
+        NotificationService.OnMedicationTaken += RefreshCompartments;
+    }
+
+    private void RefreshCompartments()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        NotificationService.OnMedicationTaken -= RefreshCompartments;
+    }
+
+    private void TriggerMedicijnHerinnering(int index)
+    {
+        var compartment = compartments[index];
+        if (compartment != null)
+        {
+            NotificationService.TriggerManualReminder(index, compartment);
+        }
+    }
+
+    private void ConfigureSpecificCompartment(int index)
+    {
+        Navigation.NavigateTo($"/Configure/{index + 1}");
+    }
+}

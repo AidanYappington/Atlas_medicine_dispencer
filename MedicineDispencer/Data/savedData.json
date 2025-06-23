@@ -1,0 +1,24 @@
+[
+  {
+    "MedicijnNaam": "Paracetamol",
+    "Dosis": "20g",
+    "Status": 0,
+    "Voorraad": 15,
+    "DoseringstijdenPerDag": [
+      "08:00:00"
+    ],
+    "LaatsteOpeningTijd": null
+  },
+  {
+    "MedicijnNaam": "Vitamine D",
+    "Dosis": "20mcg",
+    "Status": 0,
+    "Voorraad": 20,
+    "DoseringstijdenPerDag": [
+      "08:00:00"
+    ],
+    "LaatsteOpeningTijd": null
+  },
+  null,
+  null
+]

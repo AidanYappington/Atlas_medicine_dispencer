@@ -1,0 +1,44 @@
+@page "/Scanner"
+@rendermode InteractiveServer
+@inject CameraService CameraService
+
+<h1>Camera Scanner</h1>
+
+<div class="mb-4">
+    <img src="@cameraSrc" width="1920" height="1080" class="mb-2 border" />
+</div>
+
+@code {
+    private string cameraSrc = "";
+    private System.Threading.Timer? _timer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        CameraService.StartCamera();
+        // Start the timer to refresh every second (1000 ms)
+        _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 100);
+        await RefreshCamera();
+    }
+
+    private async Task RefreshCamera()
+    {
+        try
+        {
+            var base64 = CameraService.GetJpegFrameBase64();
+            cameraSrc = !string.IsNullOrEmpty(base64)
+                ? $"data:image/jpeg;base64,{base64}"
+                : "";
+        }
+        catch
+        {
+            cameraSrc = "";
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        CameraService.Dispose();
+        _timer?.Dispose();
+    }
+}
