@@ -72,7 +72,7 @@ public static class ServoService
     public static void Dispose()
     {
         if (simulate) return;
-        SetAngle(0);
+        Close();
         Stop();
         pwmChannel?.Dispose();
     }
