@@ -5,8 +5,7 @@
     "Status": 0,
     "Voorraad": 15,
     "DoseringstijdenPerDag": [
-      "07:45:00",
-      "04:56:00"
+      "08:00:00"
     ],
     "LaatsteOpeningTijd": null
   },
@@ -16,9 +15,7 @@
     "Status": 0,
     "Voorraad": 20,
     "DoseringstijdenPerDag": [
-      "08:00:00",
-      "02:05:00",
-      "02:00:00"
+      "08:00:00"
     ],
     "LaatsteOpeningTijd": null
   },
