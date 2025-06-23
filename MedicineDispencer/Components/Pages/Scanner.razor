@@ -2,22 +2,38 @@
 @rendermode InteractiveServer
 @inject CameraService CameraService
 
+@using System.Runtime.InteropServices
+
 <h1>Camera Scanner</h1>
 
-<div class="mb-4">
-    <img src="@cameraSrc" width="1920" height="1080" class="mb-2 border" />
-</div>
+@if (!isLinux)
+{
+    <div class="alert alert-warning">
+        Camera scanning is only supported on Linux (e.g., Raspberry Pi).<br />
+        This feature is not available on your current OS.
+    </div>
+}
+else
+{
+    <div class="mb-4">
+        <img src="@cameraSrc" width="1920" height="1080" class="mb-2 border" />
+    </div>
+}
 
 @code {
     private string cameraSrc = "";
     private System.Threading.Timer? _timer;
+    private bool isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
     protected override async Task OnInitializedAsync()
     {
-        CameraService.StartCamera();
-        // Start the timer to refresh every second (1000 ms)
-        _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 100);
-        await RefreshCamera();
+        if (isLinux)
+        {
+            CameraService.StartCamera();
+            // Start the timer to refresh every second (1000 ms)
+            _timer = new System.Threading.Timer(async _ => await RefreshCamera(), null, 0, 100);
+            await RefreshCamera();
+        }
     }
 
     private async Task RefreshCamera()
@@ -38,7 +54,10 @@
 
     public void Dispose()
     {
-        CameraService.Dispose();
-        _timer?.Dispose();
+        if (isLinux)
+        {
+            CameraService.Dispose();
+            _timer?.Dispose();
+        }
     }
 }
