@@ -42,4 +42,12 @@ public class UnitTest1
         Assert.Single(comp.DoseringstijdenPerDag);
         Assert.Equal(new TimeSpan(10, 30, 0), comp.DoseringstijdenPerDag[0]);
     }
+
+    [Fact]
+    public void ZetStatus_ChangesStatus()
+    {
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
+        comp.ZetStatus(CompartimentStatus.Ontgrendeld);
+        Assert.Equal(CompartimentStatus.Ontgrendeld, comp.Status);
+    }
 }
