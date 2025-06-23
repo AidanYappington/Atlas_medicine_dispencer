@@ -33,4 +33,13 @@ public class UnitTest1
         Assert.False(result);
         Assert.Equal(0, comp.Voorraad);
     }
+
+    [Fact]
+    public void VoegDoseringstijdToe_AddsTime()
+    {
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
+        comp.VoegDoseringstijdToe(10, 30);
+        Assert.Single(comp.DoseringstijdenPerDag);
+        Assert.Equal(new TimeSpan(10, 30, 0), comp.DoseringstijdenPerDag[0]);
+    }
 }
