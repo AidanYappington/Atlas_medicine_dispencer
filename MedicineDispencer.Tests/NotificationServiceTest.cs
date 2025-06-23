@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xunit;
 using MedicineDispencer.Services;
+using System.Timers;
+
 public class NotificationServiceTests
 {
     [Fact]
@@ -82,6 +84,4 @@ public class NotificationServiceTests
                 ?.SetValue(this, new System.Timers.Timer { Enabled = false });
         }
     }
-
-
 }
