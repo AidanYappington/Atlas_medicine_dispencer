@@ -68,4 +68,14 @@ public class UnitTest1
         var result = comp.VolgendeDoseringstijd();
         Assert.Contains(now.AddMinutes(10).ToString("dd-MM HH:mm"), result);
     }
+
+    [Fact]
+    public void VolgendeDoseringstijd_ReturnsTomorrowIfNoneLeftToday()
+    {
+        var now = DateTime.Now;
+        var times = new List<TimeSpan> { now.TimeOfDay.Subtract(TimeSpan.FromMinutes(10)) };
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, times);
+        var result = comp.VolgendeDoseringstijd();
+        Assert.Contains(now.AddDays(1).Date.Add(times[0]).ToString("dd-MM HH:mm"), result);
+    }
 }
