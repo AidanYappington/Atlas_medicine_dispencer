@@ -163,4 +163,12 @@ public class UnitTest1
         var comp = new MedicijnCompartiment("Test", "1mg", 1, tijden);
         Assert.Equal(3, comp.DoseringstijdenPerDag.Count);
     }
+
+    [Fact]
+    public void NeemMedicijn_DoesNotGoBelowZero()
+    {
+        var comp = new MedicijnCompartiment("Test", "1mg", 0, new List<TimeSpan>());
+        comp.NeemMedicijn();
+        Assert.Equal(0, comp.Voorraad);
+    }
 }
