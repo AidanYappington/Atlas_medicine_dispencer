@@ -9,56 +9,52 @@
 <MudPaper Class="pa-4">
     <MudText Typo="Typo.h5" Class="mb-4">📅 Weekoverzicht Medicatie</MudText>
  
-    <MudGrid>
-        @foreach (var day in Enumerable.Range(0, 7).Select(i => CurrentDate.AddDays(i)))
-        {
-            <MudItem xs="12" sm="6" md="3" lg="2">
-                <MudPaper Class="pa-2" Style="background-color: #f1f1f1; min-width: 180px;">
-                    <MudText Typo="Typo.subtitle2" Align="Align.Center">@day.ToString("ddd dd")</MudText>
+    <div class="calendar-grid">
+    @foreach (var day in Enumerable.Range(0, 7).Select(i => CurrentDate.AddDays(i)))
+    {
+        <div class="calendar-day">
+            <MudPaper Class="pa-2" Style="background-color: #f1f1f1;">
+                <MudText Typo="Typo.subtitle2" Align="Align.Center">@day.ToString("ddd dd")</MudText>
  
-                    @foreach (var hour in Enumerable.Range(0, 24))
-                    {
-                        var currentHour = new DateTime(day.Year, day.Month, day.Day, hour, 0, 0);
-                        var dosesThisHour = GroupedDoses.TryGetValue(day.Date, out var allDoses)
-                            ? allDoses.Where(d => d.Time.Hour == hour).ToList()
-                            : new List<MedicationDose>();
+                @foreach (var hour in Enumerable.Range(0, 24))
+                {
+                    var currentHour = new DateTime(day.Year, day.Month, day.Day, hour, 0, 0);
+                    var dosesThisHour = GroupedDoses.TryGetValue(day.Date, out var allDoses)
+                        ? allDoses.Where(d => d.Time.Hour == hour).ToList()
+                        : new List<MedicationDose>();
  
-                        <MudPaper Class="pa-1 mt-1" Style="border-left: 4px solid #90caf9; background-color: #ffffff;">
-                            <MudText Typo="Typo.caption" Class="text-secondary">@currentHour.ToString("HH:mm")</MudText>
+                    <MudPaper Class="pa-1 mt-1" Style="border-left: 4px solid #90caf9; background-color: #ffffff;">
+                        <MudText Typo="Typo.caption" Class="text-secondary">@currentHour.ToString("HH:mm")</MudText>
  
-                            @if (dosesThisHour.Any())
+                        @if (dosesThisHour.Any())
+                        {
+                            @foreach (var dose in dosesThisHour)
                             {
-                                @foreach (var dose in dosesThisHour)
-                                {
-                                    var borderColor = GetColorByName(dose.Name).ToDescriptionString();
+                                var borderColor = GetColorByName(dose.Name).ToDescriptionString();
  
-                                    <MudPaper Class="pa-1 mt-1 mb-1" Elevation="1" Style=@($"border-left: 4px solid {borderColor};")>
-                                        <MudStack Row JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-                                            <MudText Typo="Typo.caption">💊 @dose.Name</MudText>
-                                            <MudChip T="string"
-                                                    Size="Size.Small"
-                                                    Color="@GetColorByName(dose.Name)"
-                                                    Variant="Variant.Filled">
-                                                Vak @dose.Compartment
-                                            </MudChip>
-                                            @if (dose.Taken)
-                                            {
-                                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" />
-                                            }
-                                        </MudStack>
-                                    </MudPaper>
-                                }
+                                <MudPaper Class="pa-1 mt-1 mb-1" Elevation="1" Style=@($"border-left: 4px solid {borderColor};")>
+                                    <MudStack Row JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                                        <MudText Typo="Typo.caption">💊 @dose.Name</MudText>
+                                        <MudChip T="string"
+                                                 Size="Size.Small"
+                                                 Color="@GetColorByName(dose.Name)"
+                                                 Variant="Variant.Filled">
+                                            Vak @dose.Compartment
+                                        </MudChip>
+                                    </MudStack>
+                                </MudPaper>
                             }
-                            else
-                            {
-                                <MudText Typo="Typo.overline" Class="text-disabled">–</MudText>
-                            }
-                        </MudPaper>
-                    }
-                </MudPaper>
-            </MudItem>
-        }
-    </MudGrid>
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.overline" Class="text-disabled">–</MudText>
+                        }
+                    </MudPaper>
+                }
+            </MudPaper>
+        </div>
+    }
+</div>
 </MudPaper>
  
 @code {
