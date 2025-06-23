@@ -55,7 +55,6 @@
     private string? QrSvg;
     private string? JsonString;
 
-    // Computed property to safely escape QR SVG content
     private string? QrSvgDownloadUrl => 
         QrSvg is null ? null : $"data:image/svg+xml;utf8,{Uri.EscapeDataString(QrSvg)}";
 
@@ -73,6 +72,6 @@
         JsonString = JsonSerializer.Serialize(obj, new JsonSerializerOptions { WriteIndented = true });
 
         var qr = QrCode.EncodeText(JsonString, QrCode.Ecc.Medium);
-        QrSvg = qr.ToSvgString(4); // 4 = pixels per module
+        QrSvg = qr.ToSvgString(4);
     }
 }
