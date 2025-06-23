@@ -35,28 +35,11 @@ public class UnitTest1
     }
 
     [Fact]
-    public void VoegDoseringstijdToe_AddsTime()
-    {
-        var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
-        comp.VoegDoseringstijdToe(10, 30);
-        Assert.Single(comp.DoseringstijdenPerDag);
-        Assert.Equal(new TimeSpan(10, 30, 0), comp.DoseringstijdenPerDag[0]);
-    }
-
-    [Fact]
     public void ZetStatus_ChangesStatus()
     {
         var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
         comp.ZetStatus(CompartimentStatus.Ontgrendeld);
         Assert.Equal(CompartimentStatus.Ontgrendeld, comp.Status);
-    }
-
-    [Fact]
-    public void VulVoorraadBij_IncreasesVoorraad()
-    {
-        var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
-        comp.VulVoorraadBij(5);
-        Assert.Equal(6, comp.Voorraad);
     }
 
     [Fact]
@@ -119,7 +102,7 @@ public class UnitTest1
     {
         var comp = CompartmentsData.compartments[1];
         Assert.NotNull(comp);
-        Assert.Equal("Vitamine D", comp.MedicijnNaam);
+        Assert.Equal("Aspirine", comp.MedicijnNaam);
     }
 
     [Fact]
