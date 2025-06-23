@@ -15,4 +15,13 @@ public class UnitTest1
         Assert.Equal(10, comp.Voorraad);
         Assert.Single(comp.DoseringstijdenPerDag);
     }
+
+    [Fact]
+    public void NeemMedicijn_DecreasesVoorraad()
+    {
+        var comp = new MedicijnCompartiment("Ibuprofen", "200mg", 5, new List<TimeSpan> { new(9, 0, 0) });
+        bool result = comp.NeemMedicijn();
+        Assert.True(result);
+        Assert.Equal(4, comp.Voorraad);
+    }
 }
