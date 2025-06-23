@@ -111,4 +111,47 @@ public class UnitTest1
         Assert.Null(CompartmentsData.compartments[2]);
         Assert.Null(CompartmentsData.compartments[3]);
     }
+
+    [Fact]
+    public void MedicijnCompartiment_Status_DefaultIsVergrendeld()
+    {
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
+        Assert.Equal(CompartimentStatus.Vergrendeld, comp.Status);
+    }
+
+    [Fact]
+    public void MedicijnCompartimentDto_CanSetProperties()
+    {
+        var dto = new MedicijnCompartimentDto
+        {
+            MedicijnNaam = "Test",
+            Dosis = "2mg",
+            Status = 2,
+            Voorraad = 3,
+            DoseringstijdenPerDag = new List<string> { "10:00:00" },
+            LaatsteOpeningTijd = DateTime.Now
+        };
+        Assert.Equal("Test", dto.MedicijnNaam);
+        Assert.Equal("2mg", dto.Dosis);
+        Assert.Equal(2, dto.Status);
+        Assert.Equal(3, dto.Voorraad);
+        Assert.Single(dto.DoseringstijdenPerDag);
+        Assert.NotNull(dto.LaatsteOpeningTijd);
+    }
+
+    [Fact]
+    public void DoseringstijdenPerDag_CanHaveMultipleTimes()
+    {
+        var tijden = new List<TimeSpan> { new(8, 0, 0), new(12, 0, 0), new(18, 0, 0) };
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, tijden);
+        Assert.Equal(3, comp.DoseringstijdenPerDag.Count);
+    }
+
+    [Fact]
+    public void NeemMedicijn_DoesNotGoBelowZero()
+    {
+        var comp = new MedicijnCompartiment("Test", "1mg", 0, new List<TimeSpan>());
+        comp.NeemMedicijn();
+        Assert.Equal(0, comp.Voorraad);
+    }
 }
