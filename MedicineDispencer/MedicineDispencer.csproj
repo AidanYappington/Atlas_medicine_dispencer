@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Iot.Device.Bindings" Version="4.0.1" />
     <PackageReference Include="Microsoft.Windows.Compatibility" Version="9.0.6" />
+    <PackageReference Include="mudblazor" Version="8.8.0" />
     <PackageReference Include="OpenCvSharp4" Version="4.11.0.20250507" />
     <PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
     <PackageReference Include="OpenCvSharp4.runtime.linux-arm" Version="4.11.0.20250506" />
