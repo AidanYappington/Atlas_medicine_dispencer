@@ -24,4 +24,13 @@ public class UnitTest1
         Assert.True(result);
         Assert.Equal(4, comp.Voorraad);
     }
+
+    [Fact]
+    public void NeemMedicijn_ReturnsFalse_WhenEmpty()
+    {
+        var comp = new MedicijnCompartiment("Ibuprofen", "200mg", 0, new List<TimeSpan> { new(9, 0, 0) });
+        bool result = comp.NeemMedicijn();
+        Assert.False(result);
+        Assert.Equal(0, comp.Voorraad);
+    }
 }
