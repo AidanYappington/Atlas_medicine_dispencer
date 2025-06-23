@@ -50,4 +50,12 @@ public class UnitTest1
         comp.ZetStatus(CompartimentStatus.Ontgrendeld);
         Assert.Equal(CompartimentStatus.Ontgrendeld, comp.Status);
     }
+
+    [Fact]
+    public void VulVoorraadBij_IncreasesVoorraad()
+    {
+        var comp = new MedicijnCompartiment("Test", "1mg", 1, new List<TimeSpan>());
+        comp.VulVoorraadBij(5);
+        Assert.Equal(6, comp.Voorraad);
+    }
 }
